@@ -250,6 +250,18 @@ public:
   */
    virtual void set_initialsolution_eps(double initialsolution_eps) {};
 
+    /**
+     * @brief Computes a tighter bound on the suboptimality of the currently generated solution.
+     *
+     * The bound returned by this function is generally tighter than the last epsilon we aimed to satisfy.
+     *
+     * @return The bound on the suboptimality
+     */
+    virtual double compute_suboptimality()
+    {
+        SBPL_ERROR("compute_suboptimality is not supported for this planner.\n");
+        return -1.0;
+    }
 
     virtual ~SBPLPlanner(){};
 

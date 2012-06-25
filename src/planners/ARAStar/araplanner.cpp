@@ -1347,3 +1347,85 @@ void ARAPlanner::get_search_stats(vector<PlannerStats>* s){
   }
 }
 
+double ARAPlanner::compute_suboptimality()
+{
+    if (pSearchStateSpace_ == NULL) {
+        SBPL_ERROR("Search state space is NULL in compute_suboptimality()");
+        return -1.0;
+    }
+
+    // find the min cost from all paths that go through states in the incons list
+    int inconsListMin = std::numeric_limits<int>::max();
+    if (pSearchStateSpace_->inconslist != NULL) {
+        AbstractSearchState* currElem = pSearchStateSpace_->inconslist->getfirst();
+        while (currElem != NULL) {
+            // get the stateID of this state
+            ARAState* state = (ARAState*)currElem;
+            if (state == NULL) {
+                SBPL_ERROR("State in ARA* INCONS list not an ARAState).\n");
+                throw new SBPL_Exception();
+            }
+
+            // update the min to the f-value of this state if necessary
+            int h = state->h;
+            int g = state->g;
+            if (g + h < inconsListMin) {
+                inconsListMin = g + h;
+            }
+
+            currElem = pSearchStateSpace_->inconslist->getnext(currElem, ARAMDP_STATEID2IND);
+        }
+    }
+
+    // find the min cost from all paths that go through states still in the open list
+    int openListMin = std::numeric_limits<int>::max();
+    if (pSearchStateSpace_->heap != NULL) {
+        for (int i = 1; i < pSearchStateSpace_->heap->currentsize; i++) {
+            AbstractSearchState* abstractState = pSearchStateSpace_->heap->heap[i].heapstate;
+            if (abstractState == NULL) {
+                SBPL_ERROR("heap element with keys %d and %d has NULL AbstractSearchState\n",
+                          (int)pSearchStateSpace_->heap->heap[i].key[0],
+                          (int)pSearchStateSpace_->heap->heap[i].key[1]);
+                continue;
+            }
+
+            ARAState* araState = (ARAState*)abstractState;
+
+            int h = araState->h;
+            int g = araState->g;
+            if (g + h < openListMin) {
+                openListMin = g + h;
+            }
+        }
+    }
+
+    int overallMin = 0;
+    if (openListMin < inconsListMin) {
+         overallMin = openListMin;
+    }
+    else {
+        overallMin = inconsListMin;
+    }
+
+    if (overallMin == std::numeric_limits<int>::max()) {
+        SBPL_ERROR("Couldn't find a min f-value. Empty incons list or open list.\n");
+        return pSearchStateSpace_->eps_satisfied;
+    }
+
+    if (pSearchStateSpace_->searchgoalstate == NULL) {
+        return pSearchStateSpace_->eps_satisfied;
+    }
+
+    int goalGValue = ((ARAState*)pSearchStateSpace_->searchgoalstate->PlannerSpecificData)->g;
+
+    double lowerBound = std::numeric_limits<double>::max();
+    if (overallMin != 0) {
+        lowerBound = double(goalGValue) / double(overallMin);
+        if (lowerBound < 1.0) {
+            lowerBound = 1.0;
+        }
+    }
+
+    double tightEps = pSearchStateSpace_->eps_satisfied < lowerBound ? pSearchStateSpace_->eps_satisfied : lowerBound;
+    return tightEps;
+}

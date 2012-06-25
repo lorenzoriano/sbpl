@@ -222,6 +222,7 @@ public:
     */
   virtual void get_search_stats(vector<PlannerStats>* s);
 
+    virtual double compute_suboptimality();
 
 protected:
 
