@@ -10,6 +10,7 @@ add_library(sbpl SHARED
   src/discrete_space_information/environment_nav2Duu.cpp
   src/discrete_space_information/environment_XXX.cpp
   src/discrete_space_information/environment_robarm.cpp
+  src/discrete_space_information/environment_car.cpp
   src/planners/araplanner.cpp
   src/planners/adplanner.cpp
   src/planners/viplanner.cpp
@@ -20,7 +21,7 @@ add_library(sbpl SHARED
   src/utils/mdp.cpp
   src/utils/utils.cpp
   src/utils/2Dgridsearch.cpp	
-  )
+    )
 
 set(PKG_NAME "sbpl")
 set(PKG_DESC "The Search Based Planning Library")
@@ -39,3 +40,6 @@ target_link_libraries(test_sbpl sbpl)
 
 add_executable(test_adjacency_list src/test/test_adjacency_list.cpp)
 target_link_libraries(test_adjacency_list sbpl)
+
+add_executable(test_car src/test/test_car.cpp)
+target_link_libraries(test_car sbpl)
