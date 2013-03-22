@@ -1,5 +1,8 @@
 #include <sbpl/discrete_space_information/environment_car.h>
 
+#include <fstream>
+
+
 bool EnvironmentCar::InitializeEnv(const char* sEnvFile) {
 
 }

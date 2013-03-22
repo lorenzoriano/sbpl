@@ -1,4 +1,5 @@
 #include <sbpl/discrete_space_information/environment_car.h>
+#include <sbpl/utils/car_simulator.h>
 #include <iostream>
 
 int main() {
@@ -15,5 +16,7 @@ int main() {
 
     std::size_t h1 = c1.hash();
     std::cout<<"Cell: "<<c1<<"\thash: "<<h1<<std::endl;
+
+    Car car(0.2);
 
 }

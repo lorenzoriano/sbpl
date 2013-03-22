@@ -20,6 +20,14 @@ inline int continousSpeedToDisc(float v, const int numofspeeds,
     return discv;
 }
 
+struct motion_primitive {
+    float dx;
+    float dy;
+    float dth;
+    float v;
+    float w;
+};
+
 class ContinuousCell {
 
 public:
