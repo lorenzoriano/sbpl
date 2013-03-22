@@ -1,0 +1,25 @@
+var struct_e_n_v___n_a_v_x_y_t_h_e_t_a_l_a_t___c_o_n_f_i_g =
+[
+    [ "ActionsV", "struct_e_n_v___n_a_v_x_y_t_h_e_t_a_l_a_t___c_o_n_f_i_g.html#afc585a50b0e6d0a770ff0699a500af6c", null ],
+    [ "actionwidth", "struct_e_n_v___n_a_v_x_y_t_h_e_t_a_l_a_t___c_o_n_f_i_g.html#a4386f42948c797cf90229ba8a3840eac", null ],
+    [ "cellsize_m", "struct_e_n_v___n_a_v_x_y_t_h_e_t_a_l_a_t___c_o_n_f_i_g.html#a52220091f7816059bdd37f131651d0c9", null ],
+    [ "cost_inscribed_thresh", "struct_e_n_v___n_a_v_x_y_t_h_e_t_a_l_a_t___c_o_n_f_i_g.html#af095aa17b85aec34c694403527dbf6a3", null ],
+    [ "cost_possibly_circumscribed_thresh", "struct_e_n_v___n_a_v_x_y_t_h_e_t_a_l_a_t___c_o_n_f_i_g.html#a4e55f47846c2e52d74f251ccf74d404b", null ],
+    [ "dXY", "struct_e_n_v___n_a_v_x_y_t_h_e_t_a_l_a_t___c_o_n_f_i_g.html#a572c7a427066e95c11b210914dcf4a81", null ],
+    [ "EndTheta", "struct_e_n_v___n_a_v_x_y_t_h_e_t_a_l_a_t___c_o_n_f_i_g.html#ababcd4cf5f584f734eee6cdff5000b53", null ],
+    [ "EndX_c", "struct_e_n_v___n_a_v_x_y_t_h_e_t_a_l_a_t___c_o_n_f_i_g.html#a2f7ab7c0d6e4473080bd18c02e484e02", null ],
+    [ "EndY_c", "struct_e_n_v___n_a_v_x_y_t_h_e_t_a_l_a_t___c_o_n_f_i_g.html#a9ce0ebbb7dbf2290f5a10ab78779b1fb", null ],
+    [ "EnvHeight_c", "struct_e_n_v___n_a_v_x_y_t_h_e_t_a_l_a_t___c_o_n_f_i_g.html#a3b05cf75428d881fdc4369b6f76ca4c5", null ],
+    [ "EnvWidth_c", "struct_e_n_v___n_a_v_x_y_t_h_e_t_a_l_a_t___c_o_n_f_i_g.html#aa6d7ea325a5422ed11b5aaf7224baaef", null ],
+    [ "FootprintPolygon", "struct_e_n_v___n_a_v_x_y_t_h_e_t_a_l_a_t___c_o_n_f_i_g.html#a371ca6e661469ca0516eeb3b6bbfb9df", null ],
+    [ "Grid2D", "struct_e_n_v___n_a_v_x_y_t_h_e_t_a_l_a_t___c_o_n_f_i_g.html#aafae813c69080a48e3082e998a342ff4", null ],
+    [ "mprimV", "struct_e_n_v___n_a_v_x_y_t_h_e_t_a_l_a_t___c_o_n_f_i_g.html#ad1d2c9161c89b36257673a65dad21d22", null ],
+    [ "nominalvel_mpersecs", "struct_e_n_v___n_a_v_x_y_t_h_e_t_a_l_a_t___c_o_n_f_i_g.html#a9085e2319875b8f138c0bd1d1cd3306b", null ],
+    [ "NumThetaDirs", "struct_e_n_v___n_a_v_x_y_t_h_e_t_a_l_a_t___c_o_n_f_i_g.html#a3dacec27737f565222c7403f0554344f", null ],
+    [ "obsthresh", "struct_e_n_v___n_a_v_x_y_t_h_e_t_a_l_a_t___c_o_n_f_i_g.html#af539085618a129b94290c8b3c5708c50", null ],
+    [ "PredActionsV", "struct_e_n_v___n_a_v_x_y_t_h_e_t_a_l_a_t___c_o_n_f_i_g.html#aa91ef02385b484a46c2a7b37e371add3", null ],
+    [ "StartTheta", "struct_e_n_v___n_a_v_x_y_t_h_e_t_a_l_a_t___c_o_n_f_i_g.html#a4a68e12a0dd6d0e323244e4ba112677d", null ],
+    [ "StartX_c", "struct_e_n_v___n_a_v_x_y_t_h_e_t_a_l_a_t___c_o_n_f_i_g.html#a1453465560024725bb440584afe32be9", null ],
+    [ "StartY_c", "struct_e_n_v___n_a_v_x_y_t_h_e_t_a_l_a_t___c_o_n_f_i_g.html#a7400d145175e71cde2d69eba4c38893e", null ],
+    [ "timetoturn45degsinplace_secs", "struct_e_n_v___n_a_v_x_y_t_h_e_t_a_l_a_t___c_o_n_f_i_g.html#a8180a1cf42a9f89206710a5702bc42f0", null ]
+];

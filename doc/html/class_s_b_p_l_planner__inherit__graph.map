@@ -1,0 +1,8 @@
+<map id="G" name="G">
+<area shape="rect" id="node3" href="$class_a_d_planner.html" title="Anytime D* search planner: all states are uniquely defined by stateIDs." alt="" coords="5,83,91,112"/>
+<area shape="rect" id="node5" href="$classana_planner.html" title="ana* planner" alt="" coords="115,83,200,112"/>
+<area shape="rect" id="node7" href="$class_a_r_a_planner.html" title="ARA* planner." alt="" coords="224,83,317,112"/>
+<area shape="rect" id="node9" href="$class_p_p_c_p_planner.html" title="PPCP planner in explanations, S signifies a fully observable part of the state space H signifies hidd..." alt="" coords="341,83,443,112"/>
+<area shape="rect" id="node11" href="$class_r_s_t_a_r_planner.html" title="RSTAR* planner." alt="" coords="467,83,579,112"/>
+<area shape="rect" id="node13" href="$class_v_i_planner.html" title="value iteration planner" alt="" coords="603,83,680,112"/>
+</map>
