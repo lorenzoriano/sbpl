@@ -18,5 +18,11 @@ int main() {
     std::cout<<"Cell: "<<c1<<"\thash: "<<h1<<std::endl;
 
     Car car(0.2);
+    car.setInitialState(0,0,0);
+    car.setControl(0.1, 3.14/4.);
+    Car::return_type ret = car.simulate(1.0, 0.1);
+    std::cout<<"Position after movement: "<<ret[0]<<" "<<ret[1]<<" "<<ret[2]<<" "<<std::endl;
+
+
 
 }
