@@ -22,6 +22,7 @@ add_library(sbpl SHARED
   src/utils/utils.cpp
   src/utils/2Dgridsearch.cpp	
     )
+target_link_libraries(sbpl yaml-cpp)
 
 set(PKG_NAME "sbpl")
 set(PKG_DESC "The Search Based Planning Library")
