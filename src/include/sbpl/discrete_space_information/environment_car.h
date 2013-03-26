@@ -7,6 +7,8 @@
 
 #include <cmath>
 #include <iostream>
+#include <vector>
+#include <map>
 
 inline int continousSpeedToDisc(float v, const int numofspeeds,
                                 const float max_v,
@@ -21,12 +23,16 @@ inline int continousSpeedToDisc(float v, const int numofspeeds,
 }
 
 struct motion_primitive {
-    float dx;
-    float dy;
+    float dv;
     float dth;
-    float v;
-    float w;
+    float duration;
+    int cost;
 };
+
+std::ostream& operator<<(std::ostream& stream, const motion_primitive& p) {
+    stream<<"dv: "<<p.dv<<"\tdth: "<<p.dth<<"\tcost: "<<p.cost<<"\tduration: "<<p.duration;
+    return stream;
+}
 
 class ContinuousCell {
 
@@ -50,6 +56,22 @@ public:
         w_bins_ = theta_bins;
         max_v_ = max_v;
         min_v_ = min_v;
+    }
+
+    float x() const {
+        return x_;
+    }
+    float y() const {
+        return y_;
+    }
+    float th() const {
+        return th_;
+    }
+    float v() const {
+        return v_;
+    }
+    float w() const {
+        return w_;
     }
 
     std::size_t hash() const {
@@ -83,9 +105,20 @@ std::ostream& operator<<(std::ostream& stream, const ContinuousCell& cell) {
     return stream;
 }
 
-
-
 class EnvironmentCar : public DiscreteSpaceInformation {
+
+public:
+    EnvironmentCar(float map_res, float car_length,
+                   int theta_bins,
+                   int v_bins,
+                   float max_v,
+                   float min_v,
+                   float max_steer,
+                   float min_steer);
+
+    EnvironmentCar(const char *cfg_file);
+
+    friend std::ostream& operator<<(std::ostream& stream, const EnvironmentCar& cell);
 
     /**
      * \brief initialization environment from file (see .cfg files for examples)
@@ -212,7 +245,34 @@ class EnvironmentCar : public DiscreteSpaceInformation {
         // heuristics (for backward search)
     }
 
+    bool loadPrimitives(const char* filename);
 
+protected:
+    std::vector<motion_primitive> primitives_;
+    float simulation_time_step_;
+    std::map<std::size_t, ContinuousCell> cells_map_;
+
+    float car_length_;
+    float map_res_;
+    float theta_bins_;
+    float v_bins_;
+    float w_bins_;
+    float max_v_;
+    float min_v_;
+    float max_steer_;
+    float min_steer_;
 };
+
+std::ostream& operator<<(std::ostream& stream, const EnvironmentCar& env) {
+    stream<<"Car length: "<<env.car_length_<<" ";
+    stream<<"Map resolution: "<<env.map_res_<<" ";
+    stream<<"Theta bins: "<<env.theta_bins_<<" ";
+    stream<<"Vel bins: "<<env.v_bins_<<" ";
+    stream<<"Ang vel bins: "<<env.w_bins_<<" ";
+    stream<<"Max velocity: "<<env.max_v_<<" ";
+    stream<<"Min velocity: "<<env.min_v_<<" ";
+    stream<<"Max steering angle: "<<env.max_steer_<<" ";
+    stream<<"Min steering angle: "<<env.min_steer_<<" ";
+}
 
 #endif // ENVIRONMENT_CAR_H

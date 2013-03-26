@@ -4,8 +4,6 @@
 
 int main() {
 
-    EnvironmentCar env;
-
     ContinuousCell c(0.0, 0.0, 0.0, 0.0, 0.0,
                      0.25, 16, 5);
 
@@ -23,6 +21,8 @@ int main() {
     Car::return_type ret = car.simulate(1.0, 0.1);
     std::cout<<"Position after movement: "<<ret[0]<<" "<<ret[1]<<" "<<ret[2]<<" "<<std::endl;
 
-
+    EnvironmentCar env("/home/pezzotto/Projects/sbpl/car_primitives/world.cfg");
+    env.loadPrimitives("/home/pezzotto/Projects/sbpl/car_primitives/primitives.txt");
+    std::cout<<"Environment: "<<env<<std::endl;
 
 }
