@@ -1,28 +1,53 @@
 #include <sbpl/discrete_space_information/environment_car.h>
 #include <sbpl/utils/car_simulator.h>
+#include <sbpl/planners/araplanner.h>
+#include <sbpl/utils/mdpconfig.h>
+
 #include <iostream>
+#include <vector>
 
 int main() {
 
-    ContinuousCell c(0.0, 0.0, 0.0, 0.0, 0.0,
-                     0.25, 16, 5);
-
-    std::size_t h = c.hash();
-    std::cout<<"Cell: "<<c<<"\thash: "<<h<<std::endl;
-    ContinuousCell c1(0.0, 0.0, 0.0, 0.2, 0.0,
-                     0.25, 16, 5);
-
-    std::size_t h1 = c1.hash();
-    std::cout<<"Cell: "<<c1<<"\thash: "<<h1<<std::endl;
-
-    Car car(0.2);
-    car.setInitialState(0,0,0);
-    car.setControl(0.1, 3.14/4.);
-    Car::return_type ret = car.simulate(1.0, 0.1);
-    std::cout<<"Position after movement: "<<ret[0]<<" "<<ret[1]<<" "<<ret[2]<<" "<<std::endl;
+    std::cout<<"Size of int: "<<sizeof(int)<<std::endl;
+    std::cout<<"Size of size_t: "<<sizeof(std::size_t)<<std::endl;
 
     EnvironmentCar env("/home/pezzotto/Projects/sbpl/car_primitives/world.cfg");
     env.loadPrimitives("/home/pezzotto/Projects/sbpl/car_primitives/primitives.txt");
     std::cout<<"Environment: "<<env<<std::endl;
+
+    env.setGoal(1.0, 0, 0, 0, 0);
+    env.setStart(0, 0, 0, 0, 0);
+
+    MDPConfig mdpCfg;
+    env.InitializeMDPCfg(&mdpCfg);
+
+
+    SBPLPlanner* planner =  new ARAPlanner(&env, true);
+    // set planner properties
+    if (planner->set_start(mdpCfg.startstateid) == 0) {
+        printf("ERROR: failed to set start state\n");
+        throw new SBPL_Exception();
+    }
+    if (planner->set_goal(mdpCfg.goalstateid) == 0) {
+        printf("ERROR: failed to set goal state\n");
+        throw new SBPL_Exception();
+    }
+
+    double allocated_time_secs = 10.0; // in seconds
+    double initialEpsilon = 3.0;
+    bool bsearchuntilfirstsolution = false;
+    planner->set_initialsolution_eps(initialEpsilon);
+    planner->set_search_mode(bsearchuntilfirstsolution);
+
+    std::vector<int> solution_stateIDs_V;
+
+    // plan
+    printf("start planning...\n");
+    int bRet = planner->replan(allocated_time_secs, &solution_stateIDs_V);
+    printf("done planning\n");
+    printf("size of solution=%d\n", (unsigned int)solution_stateIDs_V.size());
+
+
+
 
 }

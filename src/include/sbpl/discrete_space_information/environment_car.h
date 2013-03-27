@@ -2,13 +2,16 @@
 #define ENVIRONMENT_CAR_H
 
 #include <sbpl/discrete_space_information/environment.h>
-#include <boost/functional/hash.hpp>
 #include <sbpl/utils/utils.h>
+
+#include <boost/functional/hash.hpp>
+#include <boost/bimap.hpp>
 
 #include <cmath>
 #include <iostream>
 #include <vector>
 #include <map>
+
 
 inline int continousSpeedToDisc(float v, const int numofspeeds,
                                 const float max_v,
@@ -76,6 +79,9 @@ public:
 
     std::size_t hash() const {
 
+        if (hash_calculated_)
+            return cached_hash_;
+
         using boost::hash_combine;
         std::size_t seed = 0;
 
@@ -86,6 +92,8 @@ public:
                                                 max_v_, min_v_));
         hash_combine(seed, ContTheta2Disc(w_,  w_bins_));
 
+        cached_hash_ = seed;
+        hash_calculated_ = true;
         return seed;
     }
     friend std::ostream& operator<<(std::ostream& stream, const ContinuousCell& matrix);
@@ -98,6 +106,9 @@ private:
     float w_bins_;
     float max_v_;
     float min_v_;
+    mutable bool hash_calculated_;
+    mutable std::size_t cached_hash_;
+
 };
 
 std::ostream& operator<<(std::ostream& stream, const ContinuousCell& cell) {
@@ -117,6 +128,11 @@ public:
                    float min_steer);
 
     EnvironmentCar(const char *cfg_file);
+
+    void setGoal(float x, float y, float th, float v, float steering_angle);
+    void setStart(float x, float y, float th, float v, float steering_angle);
+
+    bool isValidCell(const ContinuousCell& c);
 
     friend std::ostream& operator<<(std::ostream& stream, const EnvironmentCar& cell);
 
@@ -248,9 +264,20 @@ public:
     bool loadPrimitives(const char* filename);
 
 protected:
+
+    int addHashMapping(std::size_t hash_entry);
+    void addIfRequired(const ContinuousCell &c);
+    ContinuousCell& findCell(int state_id);
+    int findIdFromHash(std::size_t hash);
+
     std::vector<motion_primitive> primitives_;
     float simulation_time_step_;
     std::map<std::size_t, ContinuousCell> cells_map_;
+
+    typedef boost::bimap<int, std::size_t> hash_int_map_t;
+    hash_int_map_t hash_int_map_;
+
+
 
     float car_length_;
     float map_res_;
@@ -261,6 +288,9 @@ protected:
     float min_v_;
     float max_steer_;
     float min_steer_;
+
+    std::size_t start_id_;
+    std::size_t goal_id_;
 };
 
 std::ostream& operator<<(std::ostream& stream, const EnvironmentCar& env) {
