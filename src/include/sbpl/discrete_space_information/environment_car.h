@@ -11,7 +11,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
-
+#include <sstream>
 
 inline int continousSpeedToDisc(float v, const int numofspeeds,
                                 const float max_v,
@@ -59,6 +59,8 @@ public:
         w_bins_ = theta_bins;
         max_v_ = max_v;
         min_v_ = min_v;
+        cached_hash_ = 0;
+        hash_calculated_ = false;
     }
 
     float x() const {
@@ -96,6 +98,13 @@ public:
         hash_calculated_ = true;
         return seed;
     }
+
+    std::string repr() const {
+        std::stringstream ss;
+        ss<<"("<<x_<<", "<<y_<<", "<<th_<<", "<<v_<<", "<<w_<<")";
+        return ss.str();
+    }
+
     friend std::ostream& operator<<(std::ostream& stream, const ContinuousCell& matrix);
 
 private:
@@ -266,7 +275,7 @@ public:
 protected:
 
     int addHashMapping(std::size_t hash_entry);
-    void addIfRequired(const ContinuousCell &c);
+    int addIfRequired(const ContinuousCell &c);
     ContinuousCell& findCell(int state_id);
     int findIdFromHash(std::size_t hash);
 

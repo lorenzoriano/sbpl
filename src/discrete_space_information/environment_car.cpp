@@ -7,6 +7,15 @@
 #include <yaml-cpp/yaml.h>
 #include <fstream>
 
+template< class MapType >
+void print_map(const MapType & m)
+{
+    typedef typename MapType::const_iterator const_iterator;
+    for( const_iterator iter = m.begin(), iend = m.end(); iter != iend; ++iter )
+    {
+        std::cout << iter->first << "-->" << iter->second << std::endl;
+    }
+}
 
 EnvironmentCar::EnvironmentCar(float map_res,
                                float car_length,
@@ -59,7 +68,7 @@ void EnvironmentCar::setGoal(float x, float y, float th, float v, float steering
 
     //add the new state if it doesn't exist
     goal_id_ = c_hash;
-    SBPL_DEBUG("Setting goal with hash %zu\n", c_hash);
+    SBPL_DEBUG("Setting goal %s with hash %zu\n", c.repr().c_str(), c_hash);
     addIfRequired(c);
 }
 
@@ -71,7 +80,7 @@ void EnvironmentCar::setStart(float x, float y, float th, float v, float steerin
 
     //add the new state if it doesn't exist
     start_id_ = c_hash;
-    SBPL_DEBUG("Setting start with has %zu\n", c_hash);
+    SBPL_DEBUG("Setting start %s with hash %zu\n", c.repr().c_str(), c_hash);
     addIfRequired(c);
 }
 
@@ -101,16 +110,16 @@ ContinuousCell& EnvironmentCar::findCell(int state_id) {
     //get starting state
     hash_int_map_t::left_map::iterator hash_i = hash_int_map_.left.find(state_id);
     if (hash_i == hash_int_map_.left.end()) {
-        std::cerr<<"Error: the state with id "<<state_id<<" does not exist!"<<std::endl;
+        std::cerr<<"Error: the state with id "<<state_id<<" does not exist!"<<std::endl;        
         throw(SBPL_Exception());
     }
 
-    std::map<std::size_t, ContinuousCell>::iterator i = cells_map_.find(hash_i->first);
+    std::map<std::size_t, ContinuousCell>::iterator i = cells_map_.find(hash_i->second);
     if (i == cells_map_.end()) {
         std::cerr<<"Error: the state with hash id "<<hash_i->first<<" does not exist!"<<std::endl;
         throw(SBPL_Exception());
     }
-    SBPL_DEBUG("State id %d has hash has been found\n", state_id);
+    SBPL_DEBUG("State id %d has been found with hash %zu\n", state_id, i->second.hash());
     return i->second;
 }
 
@@ -124,13 +133,13 @@ int EnvironmentCar::findIdFromHash(std::size_t hash) {
     return i->second;
 }
 
-void EnvironmentCar::addIfRequired(const ContinuousCell& c) {
+int EnvironmentCar::addIfRequired(const ContinuousCell& c) {
     std::size_t hash = c.hash();
     //get starting state
     hash_int_map_t::right_map::iterator i = hash_int_map_.right.find(hash);
     if (i != hash_int_map_.right.end()) {//element already exist
-        SBPL_DEBUG("Cell with hash %zu already exists, not adding\n", hash);
-        return;
+        SBPL_DEBUG("Cell with hash %zu already exists with id %d, not adding\n", hash, i->second);
+        return i->second;
     }
 
     //a new entry needs to be added
@@ -139,14 +148,15 @@ void EnvironmentCar::addIfRequired(const ContinuousCell& c) {
         SBPL_ERROR("The hash value %zu is already in the map!\n", hash);
         throw(SBPL_Exception());
     }
-    SBPL_DEBUG("Adding a new cell with hash %zu\n", hash);
-    addHashMapping(hash);
+//    SBPL_DEBUG("Adding a new cell with hash %zu\n", hash);
+    return addHashMapping(hash);
 
 }
 
 void EnvironmentCar::GetSuccs(int SourceStateID, std::vector<int>* SuccIDV, std::vector<int>* CostV) {
 
     const ContinuousCell& start = findCell(SourceStateID);
+    std::cout<<"\nGetting successors of cell "<<start.repr()<<std::endl;
 
     SuccIDV->reserve(primitives_.size());
     CostV->reserve(primitives_.size());
@@ -166,18 +176,22 @@ void EnvironmentCar::GetSuccs(int SourceStateID, std::vector<int>* SuccIDV, std:
         ContinuousCell c(new_state[0],new_state[1],new_state[2],new_state[3],new_state[4],
                 map_res_, theta_bins_, v_bins_, max_v_, min_v_);
 
+        std::cout<<"Motion primitive: dv: "<<(*p).dv<<", dth: "<<(*p).dth<<" cost: "<<(*p).cost<<"\n";
+        std::cout<<"Successor cell "<<c.repr()<<std::endl;
+
         //check if cell is reachable
         if (!isValidCell(c))
             continue;
-        std::size_t c_hash = c.hash();
 
         //add the new state if it doesn't exist
-        addIfRequired(c);
+        int c_id = addIfRequired(c);
 
         //add the successor state
-        SuccIDV->push_back(c_hash);
+        SuccIDV->push_back(c_id);
         CostV->push_back((*p).cost);
+
     }
+    std::cout<<"Finished finding the successors\n\n";
 }
 
 void EnvironmentCar::GetPreds(int TargetStateID, std::vector<int>* PredIDV, std::vector<int>* CostV) {
@@ -248,6 +262,11 @@ int EnvironmentCar::addHashMapping(std::size_t hash_entry) {
         SBPL_ERROR("ERROR in Env... function: last state has incorrect stateID\n");
         throw new SBPL_Exception();
     }
+
+    std::cout<<"After addHashMapping the map has entries:\n";
+    print_map(hash_int_map_.left);
+//    std::cout<<std::endl;
+
     return int_entry;
 }
 
