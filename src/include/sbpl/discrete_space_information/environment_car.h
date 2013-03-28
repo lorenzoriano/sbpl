@@ -272,11 +272,13 @@ public:
 
     bool loadPrimitives(const char* filename);
 
+    const ContinuousCell &findCell(int state_id) const;
+    ContinuousCell &findCell(int state_id);
+
 protected:
 
     int addHashMapping(std::size_t hash_entry);
     int addIfRequired(const ContinuousCell &c);
-    ContinuousCell& findCell(int state_id);
     int findIdFromHash(std::size_t hash);
 
     std::vector<motion_primitive> primitives_;
@@ -300,6 +302,8 @@ protected:
 
     std::size_t start_id_;
     std::size_t goal_id_;
+    ContinuousCell* goal_cell_;
+    ContinuousCell* start_cell_;
 };
 
 std::ostream& operator<<(std::ostream& stream, const EnvironmentCar& env) {

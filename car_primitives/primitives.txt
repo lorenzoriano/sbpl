@@ -1,8 +1,8 @@
 motions:
-- {ds: 0.1, dth: 0.0, cost: 1, duration: 0.5}
+- {ds: 0.1, dth: 0.0, cost: 1, duration: 0.2}
 #- {ds: 0.1, dth: 0.1, cost: 2, duration: 0.5}
 #- {ds: 0.1, dth: -0.1, cost: 2, duration: 0.1}
-- {ds: -0.1, dth: -0.0, cost: 5, duration: 0.1}
+- {ds: -0.1, dth: -0.0, cost: 5, duration: 0.2}
 #- {ds: -0.1, dth: -0.1, cost: 10, duration: 0.1}
 #- {ds: -0.1, dth: 0.1, cost: 10, duration: 0.1}
 #- {ds: 0.0, dth: 0.1, cost: 1, duration: 0.1}

@@ -13,7 +13,7 @@ void print_map(const MapType & m)
     typedef typename MapType::const_iterator const_iterator;
     for( const_iterator iter = m.begin(), iend = m.end(); iter != iend; ++iter )
     {
-        std::cout << iter->first << "-->" << iter->second << std::endl;
+        SBPL_DEBUG("%d -> %zu\n",iter->first, iter->second);
     }
 }
 
@@ -69,7 +69,9 @@ void EnvironmentCar::setGoal(float x, float y, float th, float v, float steering
     //add the new state if it doesn't exist
     goal_id_ = c_hash;
     SBPL_DEBUG("Setting goal %s with hash %zu\n", c.repr().c_str(), c_hash);
-    addIfRequired(c);
+    int id = addIfRequired(c);
+    goal_cell_ = &findCell(id);
+
 }
 
 void EnvironmentCar::setStart(float x, float y, float th, float v, float steering_angle) {
@@ -81,7 +83,8 @@ void EnvironmentCar::setStart(float x, float y, float th, float v, float steerin
     //add the new state if it doesn't exist
     start_id_ = c_hash;
     SBPL_DEBUG("Setting start %s with hash %zu\n", c.repr().c_str(), c_hash);
-    addIfRequired(c);
+    int id = addIfRequired(c);
+    start_cell_ = &findCell(id);
 }
 
 bool EnvironmentCar::isValidCell(const ContinuousCell& c) {
@@ -96,24 +99,51 @@ bool EnvironmentCar::InitializeMDPCfg(MDPConfig *MDPCfg) {
 
 int EnvironmentCar::GetFromToHeuristic(int FromStateID, int ToStateID) {
     return 0;
+
 }
 
 int EnvironmentCar::GetGoalHeuristic(int stateID) {
-    return 0;
+    const ContinuousCell& start = findCell(stateID);
+    float dist = fabs(start.x() - goal_cell_->x()) + fabs(start.y() - goal_cell_->y());
+    int heuristic = int(floor(dist / map_res_));
+
+    std::cout<<"DEBUG: Cells "<<start<<" | "<<*goal_cell_<<"\n";
+    std::cout<<"Dist: "<<dist<<" heuristic: "<<heuristic<<"\n";
+
+    return heuristic;
 }
 
 int EnvironmentCar::GetStartHeuristic(int stateID) {
     return 0;
 }
 
-ContinuousCell& EnvironmentCar::findCell(int state_id) {
-    //get starting state
-    hash_int_map_t::left_map::iterator hash_i = hash_int_map_.left.find(state_id);
+const ContinuousCell& EnvironmentCar::findCell(int state_id) const {
+    //get hash
+    hash_int_map_t::left_map::const_iterator hash_i = hash_int_map_.left.find(state_id);
     if (hash_i == hash_int_map_.left.end()) {
         std::cerr<<"Error: the state with id "<<state_id<<" does not exist!"<<std::endl;        
         throw(SBPL_Exception());
     }
 
+    //get cell
+    std::map<std::size_t, ContinuousCell>::const_iterator i = cells_map_.find(hash_i->second);
+    if (i == cells_map_.end()) {
+        std::cerr<<"Error: the state with hash id "<<hash_i->first<<" does not exist!"<<std::endl;
+        throw(SBPL_Exception());
+    }
+    SBPL_DEBUG("State id %d has been found with hash %zu\n", state_id, i->second.hash());
+    return i->second;
+}
+
+ContinuousCell& EnvironmentCar::findCell(int state_id){
+    //get hash
+    hash_int_map_t::left_map::iterator hash_i = hash_int_map_.left.find(state_id);
+    if (hash_i == hash_int_map_.left.end()) {
+        std::cerr<<"Error: the state with id "<<state_id<<" does not exist!"<<std::endl;
+        throw(SBPL_Exception());
+    }
+
+    //get cell
     std::map<std::size_t, ContinuousCell>::iterator i = cells_map_.find(hash_i->second);
     if (i == cells_map_.end()) {
         std::cerr<<"Error: the state with hash id "<<hash_i->first<<" does not exist!"<<std::endl;
@@ -156,7 +186,7 @@ int EnvironmentCar::addIfRequired(const ContinuousCell& c) {
 void EnvironmentCar::GetSuccs(int SourceStateID, std::vector<int>* SuccIDV, std::vector<int>* CostV) {
 
     const ContinuousCell& start = findCell(SourceStateID);
-    std::cout<<"\nGetting successors of cell "<<start.repr()<<std::endl;
+    SBPL_DEBUG("\nGetting successors of cell %s\n", start.repr().c_str());
 
     SuccIDV->reserve(primitives_.size());
     CostV->reserve(primitives_.size());
@@ -176,8 +206,8 @@ void EnvironmentCar::GetSuccs(int SourceStateID, std::vector<int>* SuccIDV, std:
         ContinuousCell c(new_state[0],new_state[1],new_state[2],new_state[3],new_state[4],
                 map_res_, theta_bins_, v_bins_, max_v_, min_v_);
 
-        std::cout<<"Motion primitive: dv: "<<(*p).dv<<", dth: "<<(*p).dth<<" cost: "<<(*p).cost<<"\n";
-        std::cout<<"Successor cell "<<c.repr()<<std::endl;
+        SBPL_DEBUG("Motion primitive: dv: %f, dth: %fm cost: %d\n", (*p).dv, (*p).dth, (*p).cost);
+        SBPL_DEBUG("Successor cell %s\n", c.repr().c_str());
 
         //check if cell is reachable
         if (!isValidCell(c))
@@ -191,7 +221,7 @@ void EnvironmentCar::GetSuccs(int SourceStateID, std::vector<int>* SuccIDV, std:
         CostV->push_back((*p).cost);
 
     }
-    std::cout<<"Finished finding the successors\n\n";
+    SBPL_DEBUG("Finished finding the successors\n\n");
 }
 
 void EnvironmentCar::GetPreds(int TargetStateID, std::vector<int>* PredIDV, std::vector<int>* CostV) {
@@ -263,7 +293,7 @@ int EnvironmentCar::addHashMapping(std::size_t hash_entry) {
         throw new SBPL_Exception();
     }
 
-    std::cout<<"After addHashMapping the map has entries:\n";
+    SBPL_DEBUG("After addHashMapping the map has entries:\n");
     print_map(hash_int_map_.left);
 //    std::cout<<std::endl;
 

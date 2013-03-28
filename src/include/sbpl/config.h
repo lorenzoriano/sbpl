@@ -45,7 +45,7 @@
 /**
  * \brief regular debugging
  */
-#define DEBUG 0
+//#define DEBUG 0
 
 /**
  * \brief timing debugging
@@ -76,8 +76,14 @@
 #else
 #include <cstdio>
 
+#ifdef DEBUG
 #define SBPL_DEBUG          printf
 #define SBPL_DEBUG_NAMED    fprintf
+#else
+#define SBPL_DEBUG(...)
+#define SBPL_DEBUG_NAMED(...)
+#endif
+
 #define SBPL_INFO           printf
 #define SBPL_WARN           printf
 #define SBPL_ERROR          printf

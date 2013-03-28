@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <vector>
+#include <fstream>
 
 int main() {
 
@@ -46,6 +47,14 @@ int main() {
     int bRet = planner->replan(allocated_time_secs, &solution_stateIDs_V);
     printf("done planning\n");
     printf("size of solution=%d\n", (unsigned int)solution_stateIDs_V.size());
+
+    //priting the solution
+    std::ofstream f("solution.txt");
+    for (std::vector<int>::iterator i = solution_stateIDs_V.begin(); i != solution_stateIDs_V.end(); i++) {
+        const ContinuousCell& c = env.findCell(*i);
+        f<<c.x()<<" "<<c.y()<<" "<<c.th()<<" "<<c.v()<<" "<<c.w()<<"\n";
+    }
+    f.close();
 
 
 
