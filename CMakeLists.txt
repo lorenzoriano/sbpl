@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 2.8)
 PROJECT( sbpl )
 
-set(CMAKE_BUILD_TYPE Debug)
+#set(CMAKE_BUILD_TYPE Debug)
+#set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_BUILD_TYPE RelWithDebInfo)
 
 include_directories(src/include)
 
@@ -46,3 +48,10 @@ target_link_libraries(test_adjacency_list sbpl)
 
 add_executable(test_car src/test/test_car.cpp)
 target_link_libraries(test_car sbpl)
+
+add_executable(test_primitives src/test/test_primitives.cpp)
+target_link_libraries(test_primitives sbpl)
+
+add_executable(generate_reachability_graph src/test/generate_reachability_graph.cpp)
+target_link_libraries(generate_reachability_graph sbpl)
+
