@@ -376,10 +376,10 @@ int ARAPlanner::ImprovePath(ARASearchStateSpace_t* pSearchStateSpace, double Max
         //get the state
         state = (ARAState*)pSearchStateSpace->heap->deleteminheap();
 
-#if DEBUG
-        SBPL_FPRINTF(fDeb, "expanding state(%d): h=%d g=%u key=%u v=%u iterc=%d callnuma=%d expands=%d (g(goal)=%u)\n",
+//#if DEBUG
+        SBPL_FPRINTF(fDeb, "expanding state(%d): h=%d g=%u key=%u v=%u iterc=%d callnuma=%d (g(goal)=%u)\n",
                      state->MDPstate->StateID, state->h, state->g, state->g+(int)(pSearchStateSpace->eps*state->h),
-                     state->v, state->iterationclosed, state->callnumberaccessed, state->numofexpands,
+                     state->v, state->iterationclosed, state->callnumberaccessed,
                      searchgoalstate->g);
         SBPL_FPRINTF(fDeb, "expanding: ");
         PrintSearchState(state, fDeb);
@@ -389,11 +389,11 @@ int ARAPlanner::ImprovePath(ARASearchStateSpace_t* pSearchStateSpace, double Max
             throw new SBPL_Exception();
         }
         //SBPL_FFLUSH(fDeb);
-#endif
+//#endif
 
 #if DEBUG
         if (minkey.key[0] < oldkey.key[0] && fabs(this->finitial_eps - 1.0) < ERR_EPS) {
-            //SBPL_PRINTF("WARN in search: the sequence of keys decreases\n");
+            //SBPL_DEBUG("WARN in search: the sequence of keys decreases\n");
             //throw new SBPL_Exception();
         }
         oldkey = minkey;
@@ -427,33 +427,33 @@ int ARAPlanner::ImprovePath(ARASearchStateSpace_t* pSearchStateSpace, double Max
 
         //recompute goalkey if necessary
         if (goalkey.key[0] != (int)searchgoalstate->g) {
-            //SBPL_PRINTF("re-computing goal key\n");
+            //SBPL_DEBUG("re-computing goal key\n");
             //recompute the goal key (heuristics should be zero)
             goalkey.key[0] = searchgoalstate->g;
             //goalkey.key[1] = searchgoalstate->h;
         }
 
         if (expands % 100000 == 0 && expands > 0) {
-            SBPL_PRINTF("expands so far=%u\n", expands);
+            SBPL_DEBUG("expands so far=%u\n", expands);
         }
     }
 
     int retv = 1;
     if (searchgoalstate->g == INFINITECOST && pSearchStateSpace->heap->emptyheap()) {
-        SBPL_PRINTF("solution does not exist: search exited because heap is empty\n");
+        SBPL_DEBUG("solution does not exist: search exited because heap is empty\n");
         retv = 0;
     }
     else if (!pSearchStateSpace->heap->emptyheap() && goalkey > minkey) {
-        SBPL_PRINTF("search exited because it ran out of time\n");
+        SBPL_DEBUG("search exited because it ran out of time\n");
         retv = 2;
     }
     else if (searchgoalstate->g == INFINITECOST && !pSearchStateSpace->heap->emptyheap()) {
-        SBPL_PRINTF("solution does not exist: search exited because all candidates for expansion have "
+        SBPL_DEBUG("solution does not exist: search exited because all candidates for expansion have "
                     "infinite heuristics\n");
         retv = 0;
     }
     else {
-        SBPL_PRINTF("search exited with a solution for eps=%.3f\n", pSearchStateSpace->eps);
+        SBPL_DEBUG("search exited with a solution for eps=%.3f\n", pSearchStateSpace->eps);
         retv = 1;
     }
 
@@ -856,7 +856,7 @@ vector<int> ARAPlanner::GetSearchPath(ARASearchStateSpace_t* pSearchStateSpace, 
                 actioncost = CostV.at(i);
             }
         }
-        if (actioncost == INFINITECOST) SBPL_PRINTF("WARNING: actioncost = %d\n", actioncost);
+        if (actioncost == INFINITECOST) SBPL_DEBUG("WARNING: actioncost = %d\n", actioncost);
 
         solcost += actioncost;
 
@@ -957,10 +957,10 @@ bool ARAPlanner::Search(ARASearchStateSpace_t* pSearchStateSpace, vector<int>& p
         }
 
         //print the solution cost and eps bound
-        SBPL_PRINTF("eps=%f expands=%d g(searchgoal)=%d time=%.3f\n", pSearchStateSpace->eps_satisfied,
+        SBPL_DEBUG("eps=%f expands=%d g(searchgoal)=%d time=%.3f\n", pSearchStateSpace->eps_satisfied,
                     searchexpands - prevexpands,
                     ((ARAState*)pSearchStateSpace->searchgoalstate->PlannerSpecificData)->g,
-                    double(clock() - loop_time) / CLOCKS_PER_SEC);
+                    double(clock() - loop_time) / COCKS_PER_SEC);
 
         if (pSearchStateSpace->eps_satisfied == finitial_eps && pSearchStateSpace->eps == finitial_eps) {
             finitial_eps_planning_time = double(clock() - loop_time) / CLOCKS_PER_SEC;
@@ -1000,21 +1000,21 @@ bool ARAPlanner::Search(ARASearchStateSpace_t* pSearchStateSpace, vector<int>& p
     PathCost = ((ARAState*)pSearchStateSpace->searchgoalstate->PlannerSpecificData)->g;
     MaxMemoryCounter += environment_->StateID2IndexMapping.size() * sizeof(int);
 
-    SBPL_PRINTF("MaxMemoryCounter = %d\n", MaxMemoryCounter);
+    SBPL_DEBUG("MaxMemoryCounter = %d\n", MaxMemoryCounter);
 
     int solcost = INFINITECOST;
     bool ret = false;
     if (PathCost == INFINITECOST) {
-        SBPL_PRINTF("could not find a solution\n");
+        SBPL_DEBUG("could not find a solution\n");
         ret = false;
     }
     else {
-        SBPL_PRINTF("solution is found\n");
+        SBPL_DEBUG("solution is found\n");
         pathIds = GetSearchPath(pSearchStateSpace, solcost);
         ret = true;
     }
 
-    SBPL_PRINTF("total expands this call = %d, planning time = %.3f secs, solution cost=%d\n",
+    SBPL_DEBUG("total expands this call = %d, planning time = %.3f secs, solution cost=%d\n",
                 searchexpands, (clock() - TimeStarted) / ((double)CLOCKS_PER_SEC), solcost);
     final_eps_planning_time = (clock() - TimeStarted) / ((double)CLOCKS_PER_SEC);
     final_eps = pSearchStateSpace->eps_satisfied;
@@ -1060,13 +1060,13 @@ int ARAPlanner::replan(double allocated_time_secs, vector<int>* solution_stateID
     bool bOptimalSolution = false;
     *psolcost = 0;
 
-    SBPL_PRINTF("planner: replan called (bFirstSol=%d, bOptSol=%d)\n", bFirstSolution, bOptimalSolution);
+    SBPL_DEBUG("planner: replan called (bFirstSol=%d, bOptSol=%d)\n", bFirstSolution, bOptimalSolution);
 
     //plan
     if (!(bFound = Search(pSearchStateSpace_, pathIds, PathCost,
                           bFirstSolution, bOptimalSolution, allocated_time_secs)))
     {
-        SBPL_PRINTF("failed to find a solution\n");
+        SBPL_DEBUG("failed to find a solution\n");
     }
 
     //copy the solution
@@ -1078,7 +1078,7 @@ int ARAPlanner::replan(double allocated_time_secs, vector<int>* solution_stateID
 
 int ARAPlanner::set_goal(int goal_stateID)
 {
-    SBPL_PRINTF("planner: setting goal to %d\n", goal_stateID);
+    SBPL_DEBUG("planner: setting goal to %d\n", goal_stateID);
     environment_->PrintState(goal_stateID, true, stdout);
 
     if (bforwardsearch) {
@@ -1099,7 +1099,7 @@ int ARAPlanner::set_goal(int goal_stateID)
 
 int ARAPlanner::set_start(int start_stateID)
 {
-    SBPL_PRINTF("planner: setting start to %d\n", start_stateID);
+    SBPL_DEBUG("planner: setting start to %d\n", start_stateID);
     environment_->PrintState(start_stateID, true, stdout);
 
     if (bforwardsearch) {
@@ -1130,7 +1130,7 @@ void ARAPlanner::costs_changed()
 
 int ARAPlanner::force_planning_from_scratch()
 {
-    SBPL_PRINTF("planner: forceplanfromscratch set\n");
+    SBPL_DEBUG("planner: forceplanfromscratch set\n");
 
     pSearchStateSpace_->bReinitializeSearchStateSpace = true;
 
@@ -1139,7 +1139,7 @@ int ARAPlanner::force_planning_from_scratch()
 
 int ARAPlanner::force_planning_from_scratch_and_free_memory()
 {
-    SBPL_PRINTF("planner: forceplanfromscratch set\n");
+    SBPL_DEBUG("planner: forceplanfromscratch set\n");
     int start_id = -1;
     int goal_id = -1;
     if (pSearchStateSpace_->searchstartstate) start_id = pSearchStateSpace_->searchstartstate->StateID;
@@ -1165,7 +1165,7 @@ int ARAPlanner::force_planning_from_scratch_and_free_memory()
 
 int ARAPlanner::set_search_mode(bool bSearchUntilFirstSolution)
 {
-    SBPL_PRINTF("planner: search mode set to %d\n", bSearchUntilFirstSolution);
+    SBPL_DEBUG("planner: search mode set to %d\n", bSearchUntilFirstSolution);
 
     bsearchuntilfirstsolution = bSearchUntilFirstSolution;
 

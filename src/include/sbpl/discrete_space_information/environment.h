@@ -207,7 +207,7 @@ public:
      */
     virtual ~DiscreteSpaceInformation()
     {
-        SBPL_PRINTF("destroying discretespaceinformation\n");
+        SBPL_DEBUG("destroying discretespaceinformation\n");
         for (unsigned int i = 0; i < StateID2IndexMapping.size(); ++i) {
             if (StateID2IndexMapping[i] != NULL) delete[] StateID2IndexMapping[i];
         }

@@ -159,12 +159,12 @@ void CHeap::growheap()
     heapelement* newheap;
     int i;
 
-    SBPL_PRINTF("growing heap size from %d ", allocated);
+    SBPL_DEBUG("growing heap size from %d ", allocated);
 
     allocated = 2 * allocated;
     if (allocated > HEAPSIZE) allocated = HEAPSIZE;
 
-    SBPL_PRINTF("to %d\n", allocated);
+    SBPL_DEBUG("to %d\n", allocated);
 
     newheap = new heapelement[allocated];
 
@@ -417,12 +417,12 @@ void CIntHeap::growheap()
     heapintelement* newheap;
     int i;
 
-    SBPL_PRINTF("growing heap size from %d ", allocated);
+    SBPL_DEBUG("growing heap size from %d ", allocated);
 
     allocated = 2 * allocated;
     if (allocated > HEAPSIZE) allocated = HEAPSIZE;
 
-    SBPL_PRINTF("to %d\n", allocated);
+    SBPL_DEBUG("to %d\n", allocated);
 
     newheap = new heapintelement[allocated];
 
