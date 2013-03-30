@@ -13,17 +13,18 @@
 #include <map>
 #include <sstream>
 
-inline int continousSpeedToDisc(float v, const int numofspeeds,
-                                const float max_v,
-                                const float min_v) {
+inline int continousToDiscBins(float x, const int numofbins,
+                                const float max,
+                                const float min) {
 
-    if ( v >max_v)
-        v = max_v;
-    else if (v < min_v)
-        v = min_v;
-    int discv = floor((v - min_v) / (max_v - min_v) * numofspeeds);
+    if ( x >max)
+        x = max;
+    else if (x < min)
+        x = min;
+    int discv = round((x - min) / (max - min) * (numofbins-1));
     return discv;
 }
+
 
 struct motion_primitive {
     float dv;
@@ -40,25 +41,30 @@ std::ostream& operator<<(std::ostream& stream, const motion_primitive& p) {
 class ContinuousCell {
 
 public:
-    ContinuousCell(float x, float y, float th, float v, float w,
+    ContinuousCell(float x, float y, float th, float v, float steering,
                    float map_res,
                    int theta_bins,
                    int v_bins,
-                   float max_v = 1.0,
-                   float min_v = -0.3
+                   int w_bins,
+                   float max_v,
+                   float min_v,
+                   float max_steering,
+                   float min_steering
                    ) {
         x_ = x;
         y_ = y;
         th_ = th;
-        v_ = v;
-        w_ = w;
+        v_ = v;        
+        steering_ = steering;
 
         map_res_ = map_res;
         theta_bins_ = theta_bins;
         v_bins_ = v_bins;
-        w_bins_ = theta_bins;
+        w_bins_ = w_bins;
         max_v_ = max_v;
         min_v_ = min_v;
+        max_steering_ = max_steering;
+        min_steering_ = min_steering;
         cached_hash_ = 0;
         hash_calculated_ = false;
     }
@@ -75,8 +81,8 @@ public:
     float v() const {
         return v_;
     }
-    float w() const {
-        return w_;
+    float steering() const {
+        return steering_;
     }
 
     std::size_t hash() const {
@@ -87,12 +93,17 @@ public:
         using boost::hash_combine;
         std::size_t seed = 0;
 
-        hash_combine(seed, int(floor(x_ / map_res_)));
-        hash_combine(seed, int(floor(y_ / map_res_)));
-        hash_combine(seed, ContTheta2Disc(th_, theta_bins_));
-        hash_combine(seed, continousSpeedToDisc(v_, v_bins_,
-                                                max_v_, min_v_));
-        hash_combine(seed, ContTheta2Disc(w_,  w_bins_));
+        int dvalue;
+        dvalue = int(floor(x_ / map_res_));
+        hash_combine(seed, dvalue);
+        dvalue = int(floor(y_ / map_res_));
+        hash_combine(seed, dvalue);
+        dvalue = ContTheta2Disc(th_, theta_bins_);
+        hash_combine(seed, dvalue);
+        dvalue = continousToDiscBins(v_, v_bins_, max_v_, min_v_);
+        hash_combine(seed, dvalue);
+        dvalue = continousToDiscBins(steering_, w_bins_, max_steering_, min_steering_);
+        hash_combine(seed, dvalue);
 
         cached_hash_ = seed;
         hash_calculated_ = true;
@@ -101,27 +112,29 @@ public:
 
     std::string repr() const {
         std::stringstream ss;
-        ss<<"("<<x_<<", "<<y_<<", "<<th_<<", "<<v_<<", "<<w_<<")";
+        ss<<x_<<" "<<y_<<" "<<th_<<" "<<v_<<" "<<steering_;
         return ss.str();
     }
 
     friend std::ostream& operator<<(std::ostream& stream, const ContinuousCell& matrix);
 
 private:
-    float x_, y_, th_, v_, w_;
+    float x_, y_, th_, v_, steering_;
     float map_res_;
     int theta_bins_;
     float v_bins_;
     float w_bins_;
     float max_v_;
     float min_v_;
+    float max_steering_;
+    float min_steering_;
     mutable bool hash_calculated_;
     mutable std::size_t cached_hash_;
 
 };
 
 std::ostream& operator<<(std::ostream& stream, const ContinuousCell& cell) {
-    stream<<cell.x_<<" "<<cell.y_<<" "<<cell.th_<<" "<<cell.v_<<" "<<cell.w_;
+    stream<<cell.x_<<" "<<cell.y_<<" "<<cell.th_<<" "<<cell.v_<<" "<<cell.steering_;
     return stream;
 }
 
@@ -275,6 +288,11 @@ public:
     const ContinuousCell &findCell(int state_id) const;
     ContinuousCell &findCell(int state_id);
 
+    int numStates() const {
+        assert(cells_map_.size() == hash_int_map_.size());
+        return cells_map_.size();
+    }
+
 protected:
 
     int addHashMapping(std::size_t hash_entry);
@@ -287,7 +305,6 @@ protected:
 
     typedef boost::bimap<int, std::size_t> hash_int_map_t;
     hash_int_map_t hash_int_map_;
-
 
 
     float car_length_;

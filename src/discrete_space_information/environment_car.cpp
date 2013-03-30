@@ -33,8 +33,8 @@ EnvironmentCar::EnvironmentCar(float map_res,
     max_v_ = max_v;
     min_v_ = min_v;
     car_length_ = car_length;
-    min_steer_ = min_steer_;
-    max_steer_ = max_steer_;
+    min_steer_ = min_steer;
+    max_steer_ = max_steer;
 }
 
 EnvironmentCar::EnvironmentCar(const char* cfg_file) {
@@ -63,7 +63,7 @@ bool EnvironmentCar::InitializeEnv(const char* sEnvFile) {
 void EnvironmentCar::setGoal(float x, float y, float th, float v, float steering_angle) {
 
     ContinuousCell c(x, y, th, v,steering_angle,
-            map_res_, theta_bins_, v_bins_, max_v_, min_v_);
+            map_res_, theta_bins_, v_bins_, w_bins_, max_v_, min_v_, max_steer_, min_steer_);
     std::size_t c_hash = c.hash();
 
     //add the new state if it doesn't exist
@@ -77,7 +77,7 @@ void EnvironmentCar::setGoal(float x, float y, float th, float v, float steering
 void EnvironmentCar::setStart(float x, float y, float th, float v, float steering_angle) {
 
     ContinuousCell c(x, y, th, v,steering_angle,
-            map_res_, theta_bins_, v_bins_, max_v_, min_v_);
+            map_res_, theta_bins_, v_bins_,  w_bins_, max_v_, min_v_, max_steer_, min_steer_);
     std::size_t c_hash = c.hash();
 
     //add the new state if it doesn't exist
@@ -88,8 +88,13 @@ void EnvironmentCar::setStart(float x, float y, float th, float v, float steerin
 }
 
 bool EnvironmentCar::isValidCell(const ContinuousCell& c) {
-    //TODO implement me!
-    return true;
+
+    return (c.v() <= max_v_ &&
+            c.v() >= min_v_ &&
+            c.steering() <= max_steer_ &&
+            c.steering() >= min_steer_);
+
+//    return true;
 }
 
 bool EnvironmentCar::InitializeMDPCfg(MDPConfig *MDPCfg) {    
@@ -98,22 +103,32 @@ bool EnvironmentCar::InitializeMDPCfg(MDPConfig *MDPCfg) {
 }
 
 int EnvironmentCar::GetFromToHeuristic(int FromStateID, int ToStateID) {
+    throw(SBPL_Exception());
     return 0;
 
 }
 
 int EnvironmentCar::GetGoalHeuristic(int stateID) {
     const ContinuousCell& start = findCell(stateID);
-    float dist = fabs(start.x() - goal_cell_->x()) + fabs(start.y() - goal_cell_->y());
+
+    float dx = start.x() - goal_cell_->x();
+    float dy = start.y() - goal_cell_->y();
+
+
+    //manhattan distance
+//    float dist = fabs(dx) + fabs(dy);
+
+    //euclidean distance
+    float dist = sqrt(dx*dx + dy*dy);
+
     int heuristic = int(floor(dist / map_res_));
 
-    std::cout<<"DEBUG: Cells "<<start<<" | "<<*goal_cell_<<"\n";
-    std::cout<<"Dist: "<<dist<<" heuristic: "<<heuristic<<"\n";
-
     return heuristic;
+//    return 0;
 }
 
 int EnvironmentCar::GetStartHeuristic(int stateID) {
+    throw(SBPL_Exception());
     return 0;
 }
 
@@ -172,6 +187,9 @@ int EnvironmentCar::addIfRequired(const ContinuousCell& c) {
         return i->second;
     }
 
+    //DEBUG!!!
+//    std::cout<<c.repr()<<"\n";
+
     //a new entry needs to be added
     if (!cells_map_.insert(std::make_pair(hash, c)).second) {
         //this should never have happened
@@ -194,7 +212,7 @@ void EnvironmentCar::GetSuccs(int SourceStateID, std::vector<int>* SuccIDV, std:
     Car sim(car_length_);
     sim.setInitialState(start.x(), start.y(), start.th());
     float initial_v = start.v();
-    float initial_w = start.w();
+    float initial_w = start.steering();
 
     //now loop over all the primitives
     for (std::vector<motion_primitive>::iterator p = primitives_.begin(); p != primitives_.end(); p++) {
@@ -204,7 +222,7 @@ void EnvironmentCar::GetSuccs(int SourceStateID, std::vector<int>* SuccIDV, std:
         Car::return_type new_state = sim.simulate((*p).duration, simulation_time_step_);
 
         ContinuousCell c(new_state[0],new_state[1],new_state[2],new_state[3],new_state[4],
-                map_res_, theta_bins_, v_bins_, max_v_, min_v_);
+                map_res_, theta_bins_, v_bins_, w_bins_, max_v_, min_v_, max_steer_, min_steer_);
 
         SBPL_DEBUG("Motion primitive: dv: %f, dth: %fm cost: %d\n", (*p).dv, (*p).dth, (*p).cost);
         SBPL_DEBUG("Successor cell %s\n", c.repr().c_str());
@@ -267,10 +285,6 @@ bool EnvironmentCar::loadPrimitives(const char* filename) {
         primitives_.push_back(p);
     }
 
-    //DEBUG
-//    std::cout<<"Time step: "<<simulation_time_step_<<std::endl;
-//    for (std::vector<motion_primitive>::iterator i = primitives_.begin(); i != primitives_.end(); i++)
-//        std::cout<<*i<<std::endl;
 }
 
 int EnvironmentCar::addHashMapping(std::size_t hash_entry) {
