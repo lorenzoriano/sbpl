@@ -52,6 +52,9 @@ target_link_libraries(test_car sbpl)
 add_executable(test_primitives src/test/test_primitives.cpp)
 target_link_libraries(test_primitives sbpl)
 
+add_executable(test_simulator src/test/test_simulator.cpp)
+target_link_libraries(test_simulator sbpl)
+
 add_executable(generate_reachability_graph src/test/generate_reachability_graph.cpp)
 target_link_libraries(generate_reachability_graph sbpl)
 
