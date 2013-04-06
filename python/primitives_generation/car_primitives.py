@@ -52,7 +52,7 @@ class CarPrimitives:
         self.lattice = None
         self.continous_points = None
         self.primitives_costs = None
-        
+
     def create_grid_map(self,
                         multiple_thetas = False,
                         only_endpoints = True):
@@ -107,7 +107,15 @@ class CarPrimitives:
         disc_x = np.round(points[:, 0]/map_resolution) * map_resolution
         disc_y = np.round(points[:, 1]/map_resolution) * map_resolution
         disc_theta = disc_angle(points[:, 2], theta_bins)
-        point_set = set((x, y, th) for x,y,th in zip(disc_x, disc_y, disc_theta))
+        point_set = set((x, y, th) for x,y,th in zip(disc_x, disc_y, disc_theta)
+                        if abs(x) > self.map_resolution/2 or 
+                        abs(y) > self.map_resolution/2)
+        
+        #remove origin
+        #filtered_point_set = filter( lambda x: abs(x[0])>self/map_resolution/2 and
+                                                   #abs(x[1])>self/map_resolution/2,
+                                                   #point_set)
+                                                   
         points = np.array(list(point_set))   
         self.lattice  = points
         return points
@@ -207,6 +215,9 @@ class CarPrimitives:
                                       store_result = False):
         if primitives is None:
             primitives = self.primitives
+
+        #reducing some noise with roundoff
+        primitives = np.round(primitives, 3)
         
         res_primitives = []
         #finding the classes
@@ -293,13 +304,32 @@ class CarPrimitives:
         data = {'motions' : motions,
                      'time_step' : 0.01
                      }
-        #return data
         if filename is not None:
             f = open(filename, "w")
             return yaml.dump(data, f)
         else:
             return yaml.dump(data)
+
+    def write_world_file(self, filename = None):
+        data = {}
+        data["car_length"] = self.car.length
+        data["max_v"] = self.car.max_vel         
+        data["min_v"] = self.car.min_vel
+        data["max_steering_angle"] = self.car.max_steer
+        data["min_steering_angle"] = self.car.min_steer
+        data['min_duration'] = self.min_duration
+        data['max_duration'] = self.max_duration
+        data['map_resolution'] = self.map_resolution
+        data['v_bins'] = self.v_bins
+        data['theta_bins'] = self.theta_bins
         
+        if filename is not None:
+            f = open(filename, "w")
+            return yaml.dump(data, f)
+        else:
+            return yaml.dump(data)        
+        
+        return data        
     
     def run(self, number_of_clusters, number_of_cost_classes, 
             destination_filename = None):
