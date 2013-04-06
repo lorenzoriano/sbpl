@@ -1,0 +1,18 @@
+motions:
+- {cost: 3, duration: 0.298, steer: -0.524, v: 0.756}
+- {cost: 6, duration: 0.24, steer: -0.524, v: -0.939}
+- {cost: 3, duration: 0.405, steer: -0.39, v: 0.986}
+- {cost: 6, duration: 0.399, steer: -0.39, v: -1.0}
+- {cost: 2, duration: 0.499, steer: -0.311, v: 1.0}
+- {cost: 4, duration: 0.499, steer: -0.311, v: -1.0}
+- {cost: 1, duration: 0.1, steer: 0.0, v: 1.0}
+- {cost: 2, duration: 0.1, steer: 0.0, v: -1.0}
+- {cost: 2, duration: 0.499, steer: 0.311, v: 1.0}
+- {cost: 4, duration: 0.499, steer: 0.311, v: -1.0}
+- {cost: 3, duration: 0.429, steer: 0.39, v: 0.93}
+- {cost: 6, duration: 0.399, steer: 0.39, v: -1.0}
+- {cost: 3, duration: 0.305, steer: 0.509, v: 0.983}
+- {cost: 6, duration: 0.302, steer: 0.508, v: -0.992}
+- {cost: 3, duration: 0.225, steer: 0.524, v: 1.0}
+- {cost: 6, duration: 0.225, steer: 0.524, v: -1.0}
+time_step: 0.01
