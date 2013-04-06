@@ -8,10 +8,10 @@
 #include <queue>
 
 int main() {
-    EnvironmentCar env("/home/pezzotto/tmp/sbpl/car_primitives/world.cfg");
-    env.loadPrimitives("/home/pezzotto/tmp/sbpl/car_primitives/primitives.txt");
+    EnvironmentCar env("/home/pezzotto/tmp/sbpl/car_primitives/world.yaml");
+    env.loadPrimitives("/home/pezzotto/tmp/sbpl/car_primitives/primitives.yaml");
 
-    env.setStart(0, 0, 0, 0, 0);
+    env.setStart(0, 0, 0);
     float max_dim = 0.4;
     float max_x = max_dim, min_x = -max_dim;
     float max_y = max_dim, min_y = -max_dim;

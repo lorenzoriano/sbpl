@@ -6,13 +6,12 @@
 #include <boost/bind.hpp>
 #include <cmath>
 
-class Car {
+class CarSimulator {
 public:
 
     typedef boost::array<float, 3> state_type;
-    typedef boost::array<float, 5> return_type;
 
-    Car(float length) {
+    CarSimulator(float length) {
         length_ = length;
     }
 
@@ -27,7 +26,13 @@ public:
         th_ = th;
     }
 
-    return_type simulate(double duration, double time_step) {
+    void setInitialState(const state_type& s) {
+        x_ = s[0];
+        y_ = s[1];
+        th_ = s[2];
+    }
+
+    state_type simulate(double duration, double time_step) {
         state_type s;
         s[0] = x_;
         s[1] = y_;
@@ -40,12 +45,10 @@ public:
                                           duration,
                                           double(time_step));
 
-        return_type ret;
+        state_type ret;
         ret[0] = s[0];
         ret[1] = s[1];
         ret[2] = s[2];
-        ret[3] = lin_vel_;
-        ret[4] = steer_angle_;
         return ret;
     }
 
@@ -66,5 +69,13 @@ protected:
     float lin_vel_, steer_angle_;
 
 };
+
+std::ostream& operator<<(std::ostream& stream, const CarSimulator::state_type& x) {
+    for (uint i=0; i<x.size(); i++) {
+        stream<<x[i]<<" ";
+    }
+    return stream;
+
+}
 
 #endif // CAR_SIMULATOR_H

@@ -9,17 +9,15 @@
 
 int main() {
 
-    EnvironmentCar env("/home/pezzotto/tmp/sbpl/car_primitives/world.cfg");
-    env.loadPrimitives("/home/pezzotto/tmp/sbpl/car_primitives/primitives.txt");
+    EnvironmentCar env("/home/pezzotto/tmp/sbpl/car_primitives/world.yaml");
+    env.loadPrimitives("/home/pezzotto/tmp/sbpl/car_primitives/primitives.yaml");
 
-    float end_x = 0.0;
-    float end_y = 0.5;
-    float end_th = 0.0;
+    float end_x = 0;
+    float end_y = 1.00;
+    float end_th = 0;
 
-    env.setGoal(end_x, end_y, end_th, 0, 0);
-    env.setStart(0, 0, 0, 0, 0);
-//    env.setStart(7.51981000e-04,   5.00436000e-01,   1.30507346e-01,
-//                 0.00000000e+00,   1.49012000e-08);
+    env.setGoal(end_x, end_y, end_th);
+    env.setStart(0, 0, 0);
 
     MDPConfig mdpCfg;
     env.InitializeMDPCfg(&mdpCfg);
@@ -48,14 +46,30 @@ int main() {
     int bRet = planner->replan(allocated_time_secs, &solution_stateIDs_V);
     if (! bRet) {
         std::cerr<<"NO SOLUTON FOUND!\n";
+        return 1;
     }
+    else
+        std::cout<<"Solution found!\n";
 
     //priting the solution
-    std::ofstream f("solution.txt");
-    for (std::vector<int>::iterator i = solution_stateIDs_V.begin(); i != solution_stateIDs_V.end(); i++) {
-        const ContinuousCell& c = env.findCell(*i);
-        f<<c.x()<<" "<<c.y()<<" "<<c.th()<<" "<<c.v()<<" "<<c.steering()<<"\n";
+    {
+        std::ofstream f("solution.txt");
+        int num_steps = 10;
+        std::vector<CarSimulator::state_type> trajectory = env.trajectoryFromIds(solution_stateIDs_V,
+                                                                                 num_steps);
+        for (std::vector<CarSimulator::state_type>::iterator i = trajectory.begin(); i != trajectory.end(); i++) {
+            f<<(*i)[0]<<" "<<(*i)[1]<<" "<<(*i)[2]<<" "<<std::endl;
+        }
+        f.close();
+    }
+
+    {
+        std::ofstream f("cells.txt");
+        for (std::vector<int>::iterator i = solution_stateIDs_V.begin(); i != solution_stateIDs_V.end(); i++) {
+            const ContinuousCell& c = env.findCell(*i);
+            f<<c.x()<<" "<<c.y()<<" "<<c.th()<<" "<<std::endl;
     }
     f.close();
+    }
 
 }

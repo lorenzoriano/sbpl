@@ -562,15 +562,15 @@ int planxythetalat(PlannerType plannerType, char* envCfgFilename, char* motPrimF
     }
 
     // write the discrete solution to file
-    //	for (size_t i = 0; i < solution_stateIDs_V.size(); i++) {
-    //		int x;
-    //		int y;
-    //		int theta;
-    //		environment_navxythetalat.GetCoordFromState(solution_stateIDs_V[i], x, y, theta);
-    //
-    //		fprintf(fSol, "%d %d %d\t\t%.3f %.3f %.3f\n", x, y, theta,
-    //              DISCXY2CONT(x, 0.1), DISCXY2CONT(y, 0.1), DiscTheta2Cont(theta, 16));
-    //	}
+//        for (size_t i = 0; i < solution_stateIDs_V.size(); i++) {
+//            int x;
+//            int y;
+//            int theta;
+//            environment_navxythetalat.GetCoordFromState(solution_stateIDs_V[i], x, y, theta);
+
+//            fprintf(fSol, "%d %d %d\t\t%.3f %.3f %.3f\n", x, y, theta,
+//                  DISCXY2CONT(x, 0.1), DISCXY2CONT(y, 0.1), DiscTheta2Cont(theta, 16));
+//        }
 
     // write the continuous solution to file
     vector<sbpl_xy_theta_pt_t> xythetaPath;
@@ -1149,7 +1149,9 @@ int planandnavigatexythetalat(PlannerType plannerType, char* envCfgFilename, cha
             }
             printf("\n");
         }
-        printf("System Pause (return=%d)\n", system("pause"));
+//        printf("System Pause (return=%d)\n", system("pause"));
+        printf("System pause...");
+        getchar();
     }
 
     // create an empty map
@@ -1445,6 +1447,8 @@ int planandnavigatexythetalat(PlannerType plannerType, char* envCfgFilename, cha
         if (bPrint) {
             printf("System Pause (return=%d)\n", system("pause"));
         }
+        printf("Pause..");
+        getchar();
     }
 
     printf("goal reached!\n");

@@ -3,6 +3,7 @@
 
 #include <sbpl/discrete_space_information/environment.h>
 #include <sbpl/utils/utils.h>
+#include <sbpl/utils/car_simulator.h>
 
 #include <boost/functional/hash.hpp>
 #include <boost/bimap.hpp>
@@ -11,12 +12,38 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <iomanip>
 #include <sstream>
+#include <exception>
 
+class CarException : public std::exception {
+public:
+    CarException(std::string msg) {
+        msg_ = msg;
+    }
+
+    virtual ~CarException() throw() {}
+
+    virtual const char* what() const throw(){
+        return msg_.c_str();
+    }
+
+private:
+    std::string msg_;
+};
+
+/**
+ * @brief Discretize an element into bins.
+ *
+ * @param x the number to discretize
+ * @param numofbins the number of bins to use
+ * @param max the maximum value for x
+ * @param min the minimum value for x
+ * @return the discretized value
+ */
 inline int continousToDiscBins(float x, const int numofbins,
                                 const float max,
                                 const float min) {
-
     if ( x >max)
         x = max;
     else if (x < min)
@@ -25,46 +52,136 @@ inline int continousToDiscBins(float x, const int numofbins,
     return discv;
 }
 
+inline float wrap_angle(float angle) {
+    while (angle >= 2*M_PI)
+        angle -= 2*M_PI;
 
+    while (angle<0)
+        angle += 2*M_PI;
+
+    return angle;
+}
+
+/**
+ * @brief Bins an angle.  Returns the index of
+    the bin (that is, discrete value).
+ *
+ * @param x the angle to discretize
+ * @param numofbins the number of bins
+ * @return the discretized value
+ */
+inline int bin_angle(float x, int numofbins) {
+    x = wrap_angle(x);
+    return continousToDiscBins(x, numofbins, 2.*M_PI, 0.);
+}
+
+/**
+ * @brief Converts a binned angle to a continous value.
+ *
+ * @param the (discrete) angle
+ * @param numofbins the numebr of bins
+ * @return the continous angle
+ */
+inline float continous_angle(int x, int numofbins) {
+    return x * 2.*M_PI / (numofbins-1);
+}
+
+/**
+ * @brief Discretizes an angle, by first binning it, then converting it
+ * back to a continous value.
+ *
+ * @param angle the angle to discretize
+ * @param numofbins the number of bins
+ * @return the (continous) discretized angle.
+ */
+float discretize_angle(float angle, int numofbins) {
+    int binned = bin_angle(angle, numofbins);
+    return continous_angle(binned, numofbins);
+}
+
+/**
+ * @brief Discretizes a coordinate by returing the coordinate of the
+ * center of the correspoding cell.
+ *
+ * @param x the value to discretize
+ * @param map_resolution the resolution fo the map
+ * @return the center of the corresponding cell
+ */
+inline float discretize_coordinate(float x, float map_resolution) {
+    return round(x/map_resolution) * map_resolution;
+}
+
+/**
+ * @brief Returns the absolute difference between two angles, taking into
+ * consideration wrapping around.
+ *
+ * @param a1 first angle, in radians
+ * @param a2 second angle, in radians
+ * @return the difference between a1 and a2, between -pi and pi
+ */
+inline float diff_angle(float a1, float a2) {
+     return M_PI - fabs(M_PI - fabs(a1 -a2));
+}
+
+/**
+ * @brief This is a basic motion primitive, with velocity, steering angle, duration
+ * and cost.
+ */
 struct motion_primitive {
-    float dv;
-    float dth;
+    float v;
+    float steer;
     float duration;
     int cost;
+
+    bool operator==(const motion_primitive& p) {
+        return (v== p.v) && (steer == p.steer) && (duration == p.duration) && (cost == p.cost);
+    }
 };
 
+
 std::ostream& operator<<(std::ostream& stream, const motion_primitive& p) {
-    stream<<"dv: "<<p.dv<<"\tdth: "<<p.dth<<"\tcost: "<<p.cost<<"\tduration: "<<p.duration;
+    std::stringstream ss;
+    ss.unsetf(std::ios::floatfield);
+    ss<<std::setprecision(2);
+    ss<<"v: "<<p.v<<" steer: "<<p.steer<<" cost: "<<p.cost<<" duration: "<<p.duration;
+    stream<<ss.str();
     return stream;
 }
 
+/**
+ * @brief This is cell in a lattice. The x,y,th values will be discretized
+ * at construction time
+ */
 class ContinuousCell {
 
 public:
-    ContinuousCell(float x, float y, float th, float v, float steering,
+    ContinuousCell(float x, float y, float th,
                    float map_res,
-                   int theta_bins,
-                   int v_bins,
-                   int w_bins,
-                   float max_v,
-                   float min_v,
-                   float max_steering,
-                   float min_steering
+                   int theta_bins
                    ) {
-        x_ = x;
-        y_ = y;
-        th_ = th;
-        v_ = v;        
-        steering_ = steering;
+        x_ = discretize_coordinate(x, map_res);
+        y_ = discretize_coordinate(y, map_res);
+        th_ = discretize_angle(th, theta_bins);
+//        x_ = x;
+//        y_ = y;
+//        th_ = th;
 
         map_res_ = map_res;
         theta_bins_ = theta_bins;
-        v_bins_ = v_bins;
-        w_bins_ = w_bins;
-        max_v_ = max_v;
-        min_v_ = min_v;
-        max_steering_ = max_steering;
-        min_steering_ = min_steering;
+        cached_hash_ = 0;
+        hash_calculated_ = false;
+    }
+
+    ContinuousCell(const CarSimulator::state_type& p, float map_res, int theta_bins) {
+        x_ = discretize_coordinate(p[0], map_res);
+        y_ = discretize_coordinate(p[1], map_res);
+        th_ = discretize_angle(p[2], theta_bins);
+//        x_ = p[0];
+//        y_ = p[1];
+//        th_ = p[2];
+
+        map_res_ = map_res;
+        theta_bins_ = theta_bins;
         cached_hash_ = 0;
         hash_calculated_ = false;
     }
@@ -78,12 +195,6 @@ public:
     float th() const {
         return th_;
     }
-    float v() const {
-        return v_;
-    }
-    float steering() const {
-        return steering_;
-    }
 
     std::size_t hash() const {
 
@@ -93,17 +204,12 @@ public:
         using boost::hash_combine;
         std::size_t seed = 0;
 
-        int dvalue;
-        dvalue = int(floor(x_ / map_res_));
-        hash_combine(seed, dvalue);
-        dvalue = int(floor(y_ / map_res_));
-        hash_combine(seed, dvalue);
-        dvalue = ContTheta2Disc(th_, theta_bins_);
-        hash_combine(seed, dvalue);
-        dvalue = continousToDiscBins(v_, v_bins_, max_v_, min_v_);
-        hash_combine(seed, dvalue);
-        dvalue = continousToDiscBins(steering_, w_bins_, max_steering_, min_steering_);
-        hash_combine(seed, dvalue);
+        hash_combine(seed, x_);
+        hash_combine(seed, y_);
+        hash_combine(seed, th_);
+//        hash_combine(seed, discretize_coordinate(x_, map_res_));
+//        hash_combine(seed, discretize_coordinate(y_, map_res_));
+//        hash_combine(seed, bin_angle(th_, theta_bins_));
 
         cached_hash_ = seed;
         hash_calculated_ = true;
@@ -112,29 +218,41 @@ public:
 
     std::string repr() const {
         std::stringstream ss;
-        ss<<x_<<" "<<y_<<" "<<th_<<" "<<v_<<" "<<steering_;
+        ss.unsetf(std::ios::floatfield);
+        ss<<std::setprecision(2);
+        ss<<x_<<" "<<y_<<" "<<th_;
         return ss.str();
+    }
+
+    bool operator==(const ContinuousCell& c) {
+        return hash() == c.hash();
+    }
+
+    CarSimulator::state_type toCarState() const {
+        CarSimulator::state_type s;
+        s[0] = x_;
+        s[1] = y_;
+        s[2] = th_;
+        return s;
     }
 
     friend std::ostream& operator<<(std::ostream& stream, const ContinuousCell& matrix);
 
 private:
-    float x_, y_, th_, v_, steering_;
+    float x_, y_, th_;
     float map_res_;
-    int theta_bins_;
-    float v_bins_;
-    float w_bins_;
-    float max_v_;
-    float min_v_;
-    float max_steering_;
-    float min_steering_;
+    float theta_bins_;
     mutable bool hash_calculated_;
     mutable std::size_t cached_hash_;
 
 };
 
 std::ostream& operator<<(std::ostream& stream, const ContinuousCell& cell) {
-    stream<<cell.x_<<" "<<cell.y_<<" "<<cell.th_<<" "<<cell.v_<<" "<<cell.steering_;
+    std::stringstream ss;
+    ss.unsetf(std::ios::floatfield);
+    ss<<std::setprecision(2);
+    ss<<cell.x_<<" "<<cell.y_<<" "<<cell.th_;
+    stream<<ss.str();
     return stream;
 }
 
@@ -143,7 +261,6 @@ class EnvironmentCar : public DiscreteSpaceInformation {
 public:
     EnvironmentCar(float map_res, float car_length,
                    int theta_bins,
-                   int v_bins,
                    float max_v,
                    float min_v,
                    float max_steer,
@@ -151,8 +268,8 @@ public:
 
     EnvironmentCar(const char *cfg_file);
 
-    void setGoal(float x, float y, float th, float v, float steering_angle);
-    void setStart(float x, float y, float th, float v, float steering_angle);
+    void setGoal(float x, float y, float th);
+    void setStart(float x, float y, float th);
 
     bool isValidCell(const ContinuousCell& c);
 
@@ -285,6 +402,12 @@ public:
 
     bool loadPrimitives(const char* filename);
 
+    /**
+     * @brief Finds a cell from its id
+     *
+     * @param state_id the id of the cell
+     * @return the cell
+     */
     const ContinuousCell &findCell(int state_id) const;
     ContinuousCell &findCell(int state_id);
 
@@ -293,11 +416,18 @@ public:
         return cells_map_.size();
     }
 
+    motion_primitive findPrimitive(const ContinuousCell& source, const ContinuousCell& dest) const;
+    motion_primitive findPrimitive(int start_id, int dest_id) const;
+    ContinuousCell applyPrimitive(const ContinuousCell& start, const motion_primitive& p) const;
+    std::vector<CarSimulator::state_type> trajectoryFromIds(std::vector<int> ids,
+                                                            unsigned int number_of_steps = 10) const;
+
 protected:
 
     int addHashMapping(std::size_t hash_entry);
     int addIfRequired(const ContinuousCell &c);
     int findIdFromHash(std::size_t hash);
+
 
     std::vector<motion_primitive> primitives_;
     float simulation_time_step_;
@@ -310,8 +440,6 @@ protected:
     float car_length_;
     float map_res_;
     float theta_bins_;
-    float v_bins_;
-    float w_bins_;
     float max_v_;
     float min_v_;
     float max_steer_;
@@ -327,8 +455,6 @@ std::ostream& operator<<(std::ostream& stream, const EnvironmentCar& env) {
     stream<<"Car length: "<<env.car_length_<<" ";
     stream<<"Map resolution: "<<env.map_res_<<" ";
     stream<<"Theta bins: "<<env.theta_bins_<<" ";
-    stream<<"Vel bins: "<<env.v_bins_<<" ";
-    stream<<"Ang vel bins: "<<env.w_bins_<<" ";
     stream<<"Max velocity: "<<env.max_v_<<" ";
     stream<<"Min velocity: "<<env.min_v_<<" ";
     stream<<"Max steering angle: "<<env.max_steer_<<" ";
