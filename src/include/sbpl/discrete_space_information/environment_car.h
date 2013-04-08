@@ -148,6 +148,8 @@ std::ostream& operator<<(std::ostream& stream, const motion_primitive& p) {
     return stream;
 }
 
+#define FIXED_CELLS 1
+
 /**
  * @brief This is cell in a lattice. The x,y,th values will be discretized
  * at construction time
@@ -159,12 +161,15 @@ public:
                    float map_res,
                    int theta_bins
                    ) {
+#if FIXED_CELLS
         x_ = discretize_coordinate(x, map_res);
         y_ = discretize_coordinate(y, map_res);
         th_ = discretize_angle(th, theta_bins);
-//        x_ = x;
-//        y_ = y;
-//        th_ = th;
+#else
+        x_ = x;
+        y_ = y;
+        th_ = th;
+#endif
 
         map_res_ = map_res;
         theta_bins_ = theta_bins;
@@ -173,12 +178,15 @@ public:
     }
 
     ContinuousCell(const CarSimulator::state_type& p, float map_res, int theta_bins) {
+#if FIXED_CELLS
         x_ = discretize_coordinate(p[0], map_res);
         y_ = discretize_coordinate(p[1], map_res);
         th_ = discretize_angle(p[2], theta_bins);
-//        x_ = p[0];
-//        y_ = p[1];
-//        th_ = p[2];
+#else
+        x_ = p[0];
+        y_ = p[1];
+        th_ = p[2];
+#endif
 
         map_res_ = map_res;
         theta_bins_ = theta_bins;
@@ -204,12 +212,15 @@ public:
         using boost::hash_combine;
         std::size_t seed = 0;
 
+#if FIXED_CELLS
         hash_combine(seed, x_);
         hash_combine(seed, y_);
         hash_combine(seed, th_);
-//        hash_combine(seed, discretize_coordinate(x_, map_res_));
-//        hash_combine(seed, discretize_coordinate(y_, map_res_));
-//        hash_combine(seed, bin_angle(th_, theta_bins_));
+#else
+        hash_combine(seed, discretize_coordinate(x_, map_res_));
+        hash_combine(seed, discretize_coordinate(y_, map_res_));
+        hash_combine(seed, bin_angle(th_, theta_bins_));
+#endif
 
         cached_hash_ = seed;
         hash_calculated_ = true;
