@@ -288,9 +288,14 @@ class CarPrimitives:
                         number_of_classes+1)
         costs = np.digitize(abs_angles, bins)
         costs[ self.primitives[:,0] < 0] *= backward_multiplier
+
+        #now calculating the distances
+        distances = np.abs( self.primitives[:,0] * self.primitives[:,2]) / self.map_resolution
         
-        self.primitives_costs = costs
-        return costs
+        self.primitives_costs = costs * distances
+        
+        self.primitives_costs = np.array(self.primitives_costs, dtype=np.int)
+        return self.primitives_costs
     
     def write_primitives(self, filename = None):
         motions = []
@@ -331,6 +336,34 @@ class CarPrimitives:
         
         return data        
     
+    def interpolate_waypoints(self, steps, intermediate_steps):
+        """Given a series of waypoints, represented as a matrix with
+        three columns (x, y, theta), interpolate between them by finding
+        the best control from point to point and apllying it for intermediate_steps
+        times.
+        
+        Returns:
+        the interpolated trajectory as a matrix
+        """
+        traj = []
+        start = steps[0,:]
+        traj.append(start)
+        time_bounds = [self.min_duration, self.max_duration]        
+        for waypoint in steps[1:,:]:
+            
+            self.car.x = start[0]
+            self.car.y = start[1]
+            self.car.th = start[2]
+        
+            (control, err, _) = self.car.find_primitive_slsqp(waypoint, time_bounds)
+            self.car.set_control(control[0], control[1])
+            dt = control[2] / intermediate_steps
+            interp_steps = self.car.simulate(control[2], dt)
+            traj.append(interp_steps[1:,])
+            start = interp_steps[-1,:]            
+            
+        return np.vstack(traj)
+    
     def run(self, number_of_clusters, number_of_cost_classes, 
             destination_filename = None):
         self.create_primitives()
@@ -341,6 +374,10 @@ class CarPrimitives:
             
 
 if __name__ == "__main__":
-    prims = CarPrimitives("/home/pezzotto/tmp/sbpl/car_primitives/world.cfg", False)    
-    prims.run(10, 3, "/home/pezzotto/tmp/sbpl/car_primitives/world.yaml")
-    
+    import cPickle
+    prims = cPickle.load(open("/home/pezzotto/prims.txt"))
+    cells = np.loadtxt("/home/pezzotto/tmp/sbpl/build/cells.txt")
+    traj = prims.interpolate_waypoints(cells, 10)
+    pylab.plot(traj[:,0], traj[:,1], 'b-o')
+    pylab.plot(cells[:,0], cells[:,1], "rx", ms=20.0);
+    pylab.show()
