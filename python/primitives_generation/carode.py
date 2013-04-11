@@ -1,8 +1,9 @@
-from scipy.integrate import odeint, ode
+from scipy.integrate import ode
 import numpy as np
 from scipy import optimize
 import angles
-from math import sin, cos, tan, pi
+from math import sin, cos, tan, pi, fabs
+from numpy import sign
 
 def diff_angle(a1, a2):
     return ((a1-a2) + pi) % (2*pi) - pi
@@ -118,8 +119,6 @@ class Car(object):
             
             err = err_x**2 + err_y**2 + err_th**2
             return err
-            #print control, " -> ", np.array([err_x, err_y, err_th])
-            #return np.array([err_x, err_y, err_th])
 
         #initial_control = [vel_bounds[1], 0, time_bounds[0]]
         inits = zip(np.linspace(vel_bounds[0], vel_bounds[1], num_attempts),
@@ -132,8 +131,8 @@ class Car(object):
                                       initial_control,
                                       #f_eqcons=position_error,
                                       bounds=bounds,
-                                      epsilon=0.000001,
-                                      iter = 100,
+                                      epsilon=0.0000001,
+                                      iter = 1000,
                                       full_output=True,
                                       iprint=0
                                       )
@@ -142,6 +141,71 @@ class Car(object):
             
         control, err, _, imode, _ = best_ret        
         return (control, err, imode)
+    
+    def find_primitive_slsqp_euler(self, end_pos, time_bounds,
+                                 num_attempts = 10):
+            
+        #bounds
+        vel_bounds = (self.min_vel + self.lin_vel, self.max_vel - self.lin_vel)
+        steer_bounds = (self.min_steer + self.steer_angle, self.max_steer + self.steer_angle)
+        #time_bounds = [0.1, 1.0]
+        
+        bounds = [vel_bounds, steer_bounds, time_bounds]
+        end_pos = np.array(end_pos)
+        
+        def position_error(control):
+            v, w, t = control
+            if t <= 0:
+                print "Warning, setting a time <=0"
+                return np.sum(end_pos**2)
+            
+            thp = self.th + v/self.length*t*tan(w)
+            xp = self.x + v*t*cos(thp)
+            yp = self.y + v*t*sin(thp)
+            
+            err_x = (end_pos[0] -xp)
+            err_y = (end_pos[1] - yp)
+            err_th = diff_angle(end_pos[2], thp) #special angles treatment
+            
+            err = err_x**2 + err_y**2 + err_th**2
+            return err
+        
+        goal_x = end_pos[0]
+        goal_y = end_pos[1]
+        goal_th = end_pos[2]
+        x0 = self.x
+        y0 = self.y
+        th0 = self.th
+        l = self.length        
+        Abs = fabs
+        def fprime(control):
+            v, w, t = control
+            dv = -2*t*(goal_x - t*v*cos(th0) - x0)*cos(th0) - 2*t*(goal_y - t*v*sin(th0) - y0)*sin(th0) - 2*t*(-Abs(-Abs(goal_th - th0 - t*v*tan(w)/l) + pi) + pi)*tan(w)*sign(-Abs(goal_th - th0 - t*v*tan(w)/l) + pi)*sign(goal_th - th0 - t*v*tan(w)/l)/l
+            dw = -2*t*v*(tan(w)**2 + 1)*(-Abs(-Abs(goal_th - th0 - t*v*tan(w)/l) + pi) + pi)*sign(-Abs(goal_th - th0 - t*v*tan(w)/l) + pi)*sign(goal_th - th0 - t*v*tan(w)/l)/l
+            dt = -2*v*(goal_x - t*v*cos(th0) - x0)*cos(th0) - 2*v*(goal_y - t*v*sin(th0) - y0)*sin(th0) - 2*v*(-Abs(-Abs(goal_th - th0 - t*v*tan(w)/l) + pi) + pi)*tan(w)*sign(-Abs(goal_th - th0 - t*v*tan(w)/l) + pi)*sign(goal_th - th0 - t*v*tan(w)/l)/l
+            
+            return [dv, dw, dt]
+
+        #initial_control = [vel_bounds[1], 0, time_bounds[0]]
+        inits = zip(np.linspace(vel_bounds[0], vel_bounds[1], num_attempts),
+                    [0]*num_attempts,
+                    [time_bounds[0]] * num_attempts)
+
+        best_ret = [0, np.inf, 0, 0]
+        for initial_control in inits:
+            ret = optimize.fmin_slsqp(position_error,
+                                      initial_control,
+                                      bounds=bounds,
+                                      fprime=fprime,
+                                      iter = 1000,
+                                      full_output=True,
+                                      iprint=0
+                                      )
+            if ret[1] < best_ret[1]:
+                best_ret = ret
+            
+        control, err, _, imode, _ = best_ret        
+        return (control, err, imode)    
 
 if __name__ == "__main__":
     max_vel = 1.0

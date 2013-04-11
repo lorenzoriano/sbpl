@@ -7,13 +7,16 @@
 #include <vector>
 #include <fstream>
 
+//timing
+#include <boost/progress.hpp>
+
 int main() {
 
     EnvironmentCar env("/home/pezzotto/tmp/sbpl/car_primitives/world.yaml");
     env.loadPrimitives("/home/pezzotto/tmp/sbpl/car_primitives/primitives.yaml");
 
-    float end_x = 0;
-    float end_y = 1.00;
+    float end_x = 0.;
+    float end_y = 1.0;
     float end_th = 0;
 
     env.setGoal(end_x, end_y, end_th);
@@ -34,7 +37,7 @@ int main() {
         throw new SBPL_Exception();
     }
 
-    double allocated_time_secs = 10.; // in seconds
+    double allocated_time_secs = 20.; // in seconds
     double initialEpsilon = 3.0;
     bool bsearchuntilfirstsolution = false;
     planner->set_initialsolution_eps(initialEpsilon);
@@ -43,33 +46,22 @@ int main() {
     std::vector<int> solution_stateIDs_V;
 
     // plan
+    boost::progress_timer __timer;
     int bRet = planner->replan(allocated_time_secs, &solution_stateIDs_V);
+    std::cout<<env.numStates()<<" cells expanded"<<std::endl;
     if (! bRet) {
-        std::cerr<<"NO SOLUTON FOUND!\n";
+        std::cerr<<"NO SOLUTON FOUND!\n";        
         return 1;
     }
     else
         std::cout<<"Solution found!\n";
 
     //priting the solution
-    {
-        std::ofstream f("solution.txt");
-        int num_steps = 10;
-        std::vector<CarSimulator::state_type> trajectory = env.trajectoryFromIds(solution_stateIDs_V,
-                                                                                 num_steps);
-        for (std::vector<CarSimulator::state_type>::iterator i = trajectory.begin(); i != trajectory.end(); i++) {
-            f<<(*i)[0]<<" "<<(*i)[1]<<" "<<(*i)[2]<<" "<<std::endl;
-        }
-        f.close();
-    }
-
-    {
-        std::ofstream f("cells.txt");
-        for (std::vector<int>::iterator i = solution_stateIDs_V.begin(); i != solution_stateIDs_V.end(); i++) {
-            const ContinuousCell& c = env.findCell(*i);
-            f<<c.x()<<" "<<c.y()<<" "<<c.th()<<" "<<std::endl;
+    std::ofstream f("cells.txt");
+    for (std::vector<int>::iterator i = solution_stateIDs_V.begin(); i != solution_stateIDs_V.end(); i++) {
+        const ContinuousCell& c = env.findCell(*i);
+        f<<c.x()<<" "<<c.y()<<" "<<c.th()<<" "<<std::endl;
     }
     f.close();
-    }
 
 }

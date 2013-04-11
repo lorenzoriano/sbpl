@@ -194,7 +194,7 @@ class CarPrimitives:
             for traj in trajectories:
                 pylab.plot(traj[:,0], traj[:,1]) 
             
-            pylab.title("Reachable points (lattice). # points: %d" % (len(succeded_destinations)))
+            pylab.title("Reachable points (lattice). # primitives: %d" % (len(self.primitives)))
             pylab.show()                      
         
         return self.primitives, self.failed_cells        
@@ -271,7 +271,7 @@ class CarPrimitives:
         
         return new_primitives
     
-    def calculate_primitive_costs(self, number_of_classes = 3, 
+    def calculate_primitive_costs(self, primitives=None, number_of_classes = 3, 
                                   backward_multiplier = 2):
         """Calculates the cost for each primitive. The main idea is that the 
         higher the steering, the more a primitive costs. Backward movements
@@ -280,17 +280,20 @@ class CarPrimitives:
         cost. The cost for backward movements is then multiplied by
         backward_multiplier.
         """
+        
+        if primitives is None:
+            primitives = self.primitives
 
         #the absolute curvature is what matters
-        abs_angles = np.abs(self.primitives[:,1])
+        abs_angles = np.abs(primitives[:,1])
         #weird behavior of digitize
         bins = np.linspace(abs_angles.min(), abs_angles.max()+0.001, 
                         number_of_classes+1)
         costs = np.digitize(abs_angles, bins)
-        costs[ self.primitives[:,0] < 0] *= backward_multiplier
+        costs[ primitives[:,0] < 0] *= backward_multiplier
 
         #now calculating the distances
-        distances = np.abs( self.primitives[:,0] * self.primitives[:,2]) / self.map_resolution
+        distances = np.abs(primitives[:,0] * primitives[:,2]) / self.map_resolution
         
         self.primitives_costs = costs * distances
         
@@ -350,12 +353,11 @@ class CarPrimitives:
         traj.append(start)
         time_bounds = [self.min_duration, self.max_duration]        
         for waypoint in steps[1:,:]:
-            
             self.car.x = start[0]
             self.car.y = start[1]
             self.car.th = start[2]
         
-            (control, err, _) = self.car.find_primitive_slsqp(waypoint, time_bounds)
+            (control, err, _) = self.car.find_primitive_slsqp_euler(waypoint, time_bounds)
             self.car.set_control(control[0], control[1])
             dt = control[2] / intermediate_steps
             interp_steps = self.car.simulate(control[2], dt)
@@ -377,7 +379,7 @@ if __name__ == "__main__":
     import cPickle
     prims = cPickle.load(open("/home/pezzotto/prims.txt"))
     cells = np.loadtxt("/home/pezzotto/tmp/sbpl/build/cells.txt")
-    traj = prims.interpolate_waypoints(cells, 10)
-    pylab.plot(traj[:,0], traj[:,1], 'b-o')
-    pylab.plot(cells[:,0], cells[:,1], "rx", ms=20.0);
-    pylab.show()
+    traj = prims.interpolate_waypoints(cells, 1)
+    #pylab.figure()
+    #pylab.plot(traj[:,0], traj[:,1], 'b-o')
+    #pylab.plot(cells[:,0], cells[:,1], "rx", ms=20.0);
