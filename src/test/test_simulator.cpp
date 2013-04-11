@@ -12,7 +12,7 @@ int main() {
     float y = 0.281875;
     float th = -0.351909;
 
-    ContinuousCell c(x, y, th, map_resolution, theta_bins);
+    ContinuousCell c(x, y, th, true, map_resolution, theta_bins);
     std::cout<<"Coordinates "<<x<<" "<<y<<" "<<th<<" ";
     std::cout<<"Map to: "<<c<<"\n";
 
@@ -22,7 +22,7 @@ int main() {
     car.setControl(-1.0, 0.21);
     CarSimulator::state_type ret = car.simulate(1.0, 0.01);
     std::cout<<"Real Dest: X: "<<ret[0]<<" Y: "<<ret[1]<<" Th: "<<ret[2]<<std::endl;
-    ContinuousCell newcell(ret, map_resolution, theta_bins);
+    ContinuousCell newcell(ret, true, map_resolution, theta_bins);
     std::cout<<"Cell: "<<newcell<<std::endl;
     std::cout<<"Angle error (deg): "<<diff_angle(ret[2], newcell.th())<<std::endl;
 }

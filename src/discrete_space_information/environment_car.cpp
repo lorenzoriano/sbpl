@@ -61,7 +61,9 @@ bool EnvironmentCar::InitializeEnv(const char* sEnvFile) {
 
 void EnvironmentCar::setGoal(float x, float y, float th) {
 
-    ContinuousCell c(x, y, th,
+    bool is_forward = true;
+
+    ContinuousCell c(x, y, th, is_forward,
             map_res_, theta_bins_);
     std::size_t c_hash = c.hash();
 
@@ -75,7 +77,8 @@ void EnvironmentCar::setGoal(float x, float y, float th) {
 
 void EnvironmentCar::setStart(float x, float y, float th) {
 
-    ContinuousCell c(x, y, th,
+    bool is_forward = true;
+    ContinuousCell c(x, y, th, is_forward,
             map_res_, theta_bins_);
     std::size_t c_hash = c.hash();
 
@@ -218,7 +221,8 @@ void EnvironmentCar::GetSuccs(int SourceStateID, std::vector<int>* SuccIDV, std:
         sim.setControl(new_v, new_steer);
         CarSimulator::state_type new_state = sim.simulate((*p).duration, simulation_time_step_);
 
-        ContinuousCell c(new_state[0],new_state[1],new_state[2],
+        bool is_forward = new_v >= 0;
+        ContinuousCell c(new_state, is_forward,
                 map_res_, theta_bins_);
 
         SBPL_DEBUG("Motion primitive: dv: %f, dth: %fm cost: %d\n", (*p).v, (*p).steer, (*p).cost);
@@ -339,7 +343,8 @@ ContinuousCell EnvironmentCar::applyPrimitive(const ContinuousCell& start, const
     sim.setControl(p.v, p.steer);
     CarSimulator::state_type new_state = sim.simulate(p.duration, simulation_time_step_);
 
-    ContinuousCell c(new_state[0],new_state[1],new_state[2],
+    bool is_forward = p.v >= 0;
+    ContinuousCell c(new_state, is_forward,
             map_res_, theta_bins_);
     return c;
 }

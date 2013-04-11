@@ -16,8 +16,8 @@ int main() {
     env.loadPrimitives("/home/pezzotto/tmp/sbpl/car_primitives/primitives.yaml");
 
     float end_x = 0.;
-    float end_y = 1.0;
-    float end_th = 0;
+    float end_y = 0.0;
+    float end_th = M_PI;
 
     env.setGoal(end_x, end_y, end_th);
     env.setStart(0, 0, 0);
@@ -60,7 +60,8 @@ int main() {
     std::ofstream f("cells.txt");
     for (std::vector<int>::iterator i = solution_stateIDs_V.begin(); i != solution_stateIDs_V.end(); i++) {
         const ContinuousCell& c = env.findCell(*i);
-        f<<c.x()<<" "<<c.y()<<" "<<c.th()<<" "<<std::endl;
+//        f<<c.x()<<" "<<c.y()<<" "<<c.th()<<" "<<c.is_forward()<<std::endl;
+        f<<c<<std::endl;
     }
     f.close();
 

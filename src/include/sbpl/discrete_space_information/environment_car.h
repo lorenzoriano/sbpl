@@ -148,7 +148,7 @@ std::ostream& operator<<(std::ostream& stream, const motion_primitive& p) {
     return stream;
 }
 
-#define FIXED_CELLS 1
+#define FIXED_CELLS 0
 
 /**
  * @brief This is cell in a lattice. The x,y,th values will be discretized
@@ -158,6 +158,7 @@ class ContinuousCell {
 
 public:
     ContinuousCell(float x, float y, float th,
+                   bool is_forward,
                    float map_res,
                    int theta_bins
                    ) {
@@ -170,6 +171,7 @@ public:
         y_ = y;
         th_ = th;
 #endif
+        is_forward_ = is_forward;
 
         map_res_ = map_res;
         theta_bins_ = theta_bins;
@@ -177,7 +179,9 @@ public:
         hash_calculated_ = false;
     }
 
-    ContinuousCell(const CarSimulator::state_type& p, float map_res, int theta_bins) {
+    ContinuousCell(const CarSimulator::state_type& p,
+                   bool is_forward,
+                   float map_res, int theta_bins) {
 #if FIXED_CELLS
         x_ = discretize_coordinate(p[0], map_res);
         y_ = discretize_coordinate(p[1], map_res);
@@ -188,6 +192,7 @@ public:
         th_ = p[2];
 #endif
 
+        is_forward_ = is_forward;
         map_res_ = map_res;
         theta_bins_ = theta_bins;
         cached_hash_ = 0;
@@ -202,6 +207,9 @@ public:
     }
     float th() const {
         return th_;
+    }
+    bool is_forward() const {
+        return is_forward_;
     }
 
     std::size_t hash() const {
@@ -221,6 +229,7 @@ public:
         hash_combine(seed, discretize_coordinate(y_, map_res_));
         hash_combine(seed, bin_angle(th_, theta_bins_));
 #endif
+        hash_combine(seed, is_forward_);
 
         cached_hash_ = seed;
         hash_calculated_ = true;
@@ -251,6 +260,7 @@ public:
 
 private:
     float x_, y_, th_;
+    bool is_forward_;
     float map_res_;
     float theta_bins_;
     mutable bool hash_calculated_;
@@ -262,7 +272,7 @@ std::ostream& operator<<(std::ostream& stream, const ContinuousCell& cell) {
     std::stringstream ss;
     ss.unsetf(std::ios::floatfield);
     ss<<std::setprecision(2);
-    ss<<cell.x_<<" "<<cell.y_<<" "<<cell.th_;
+    ss<<cell.x_<<" "<<cell.y_<<" "<<cell.th_<<" "<<-cell.is_forward_;
     stream<<ss.str();
     return stream;
 }
