@@ -160,17 +160,23 @@ public:
     ContinuousCell(float x, float y, float th,
                    bool is_forward,
                    float map_res,
-                   int theta_bins
+                   int theta_bins,
+                   bool fixed_cells
                    ) {
-#if FIXED_CELLS
-        x_ = discretize_coordinate(x, map_res);
-        y_ = discretize_coordinate(y, map_res);
-        th_ = discretize_angle(th, theta_bins);
-#else
-        x_ = x;
-        y_ = y;
-        th_ = th;
-#endif
+
+        fixed_cells_ = fixed_cells;
+
+        if (fixed_cells_) {
+            x_ = discretize_coordinate(x, map_res);
+            y_ = discretize_coordinate(y, map_res);
+            th_ = discretize_angle(th, theta_bins);
+        }
+        else {
+            x_ = x;
+            y_ = y;
+            th_ = th;
+        }
+
         is_forward_ = is_forward;
 
         map_res_ = map_res;
@@ -181,16 +187,20 @@ public:
 
     ContinuousCell(const CarSimulator::state_type& p,
                    bool is_forward,
-                   float map_res, int theta_bins) {
-#if FIXED_CELLS
-        x_ = discretize_coordinate(p[0], map_res);
-        y_ = discretize_coordinate(p[1], map_res);
-        th_ = discretize_angle(p[2], theta_bins);
-#else
-        x_ = p[0];
-        y_ = p[1];
-        th_ = p[2];
-#endif
+                   float map_res, int theta_bins,
+                   bool fixed_cells) {
+
+        fixed_cells_ = fixed_cells;
+        if (fixed_cells_) {
+            x_ = discretize_coordinate(p[0], map_res);
+            y_ = discretize_coordinate(p[1], map_res);
+            th_ = discretize_angle(p[2], theta_bins);
+        }
+        else {
+            x_ = p[0];
+            y_ = p[1];
+            th_ = p[2];
+        }
 
         is_forward_ = is_forward;
         map_res_ = map_res;
@@ -220,15 +230,16 @@ public:
         using boost::hash_combine;
         std::size_t seed = 0;
 
-#if FIXED_CELLS
-        hash_combine(seed, x_);
-        hash_combine(seed, y_);
-        hash_combine(seed, th_);
-#else
-        hash_combine(seed, discretize_coordinate(x_, map_res_));
-        hash_combine(seed, discretize_coordinate(y_, map_res_));
-        hash_combine(seed, bin_angle(th_, theta_bins_));
-#endif
+        if (fixed_cells_) {
+            hash_combine(seed, x_);
+            hash_combine(seed, y_);
+            hash_combine(seed, th_);
+        }
+        else {
+            hash_combine(seed, discretize_coordinate(x_, map_res_));
+            hash_combine(seed, discretize_coordinate(y_, map_res_));
+            hash_combine(seed, bin_angle(th_, theta_bins_));
+        }
         hash_combine(seed, is_forward_);
 
         cached_hash_ = seed;
@@ -263,6 +274,7 @@ private:
     bool is_forward_;
     float map_res_;
     float theta_bins_;
+    bool fixed_cells_;
     mutable bool hash_calculated_;
     mutable std::size_t cached_hash_;
 
@@ -281,6 +293,7 @@ class EnvironmentCar : public DiscreteSpaceInformation {
 
 public:
     EnvironmentCar(float map_res, float car_length,
+                   bool fixed_cells,
                    int theta_bins,
                    float max_v,
                    float min_v,
@@ -465,6 +478,7 @@ protected:
     float min_v_;
     float max_steer_;
     float min_steer_;
+    bool fixed_cells_;
 
     std::size_t start_id_;
     std::size_t goal_id_;
@@ -480,6 +494,7 @@ std::ostream& operator<<(std::ostream& stream, const EnvironmentCar& env) {
     stream<<"Min velocity: "<<env.min_v_<<" ";
     stream<<"Max steering angle: "<<env.max_steer_<<" ";
     stream<<"Min steering angle: "<<env.min_steer_<<" ";
+    stream<<"Fixed Cells: "<<env.fixed_cells_<<" ";
 }
 
 #endif // ENVIRONMENT_CAR_H

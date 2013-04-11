@@ -8,3 +8,4 @@ max_steering_angle: 0.5236
 min_steering_angle: -0.5236
 theta_bins: 16
 v_bins: 20
+fixed_cells: false

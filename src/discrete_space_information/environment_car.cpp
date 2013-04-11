@@ -18,7 +18,7 @@ void print_map(const MapType & m)
 }
 
 EnvironmentCar::EnvironmentCar(float map_res,
-                               float car_length,
+                               float car_length, bool fixed_cells,
                                int theta_bins,
                                float max_v,
                                float min_v,
@@ -32,6 +32,7 @@ EnvironmentCar::EnvironmentCar(float map_res,
     car_length_ = car_length;
     min_steer_ = min_steer;
     max_steer_ = max_steer;
+    fixed_cells_ = fixed_cells;
 }
 
 EnvironmentCar::EnvironmentCar(const char* cfg_file) {
@@ -57,6 +58,7 @@ bool EnvironmentCar::InitializeEnv(const char* sEnvFile) {
     doc["min_v"] >> min_v_;
     doc["max_steering_angle"] >> max_steer_;
     doc["min_steering_angle"] >> min_steer_;
+    doc["fixed_cells"] >> fixed_cells_;
 }
 
 void EnvironmentCar::setGoal(float x, float y, float th) {
@@ -64,7 +66,7 @@ void EnvironmentCar::setGoal(float x, float y, float th) {
     bool is_forward = true;
 
     ContinuousCell c(x, y, th, is_forward,
-            map_res_, theta_bins_);
+            map_res_, theta_bins_, fixed_cells_);
     std::size_t c_hash = c.hash();
 
     //add the new state if it doesn't exist
@@ -79,7 +81,7 @@ void EnvironmentCar::setStart(float x, float y, float th) {
 
     bool is_forward = true;
     ContinuousCell c(x, y, th, is_forward,
-            map_res_, theta_bins_);
+            map_res_, theta_bins_, fixed_cells_);
     std::size_t c_hash = c.hash();
 
     //add the new state if it doesn't exist
@@ -223,7 +225,7 @@ void EnvironmentCar::GetSuccs(int SourceStateID, std::vector<int>* SuccIDV, std:
 
         bool is_forward = new_v >= 0;
         ContinuousCell c(new_state, is_forward,
-                map_res_, theta_bins_);
+                map_res_, theta_bins_, fixed_cells_);
 
         SBPL_DEBUG("Motion primitive: dv: %f, dth: %fm cost: %d\n", (*p).v, (*p).steer, (*p).cost);
         SBPL_DEBUG("Successor cell %s\n", c.repr().c_str());
@@ -345,7 +347,7 @@ ContinuousCell EnvironmentCar::applyPrimitive(const ContinuousCell& start, const
 
     bool is_forward = p.v >= 0;
     ContinuousCell c(new_state, is_forward,
-            map_res_, theta_bins_);
+            map_res_, theta_bins_, fixed_cells_);
     return c;
 }
 

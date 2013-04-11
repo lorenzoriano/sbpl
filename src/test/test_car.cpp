@@ -15,8 +15,8 @@ int main() {
     EnvironmentCar env("/home/pezzotto/tmp/sbpl/car_primitives/world.yaml");
     env.loadPrimitives("/home/pezzotto/tmp/sbpl/car_primitives/primitives.yaml");
 
-    float end_x = 0.;
-    float end_y = 0.0;
+    float end_x = 2.;
+    float end_y = 2.0;
     float end_th = M_PI;
 
     env.setGoal(end_x, end_y, end_th);
@@ -37,7 +37,7 @@ int main() {
         throw new SBPL_Exception();
     }
 
-    double allocated_time_secs = 20.; // in seconds
+    double allocated_time_secs = 30.; // in seconds
     double initialEpsilon = 3.0;
     bool bsearchuntilfirstsolution = false;
     planner->set_initialsolution_eps(initialEpsilon);
