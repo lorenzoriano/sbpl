@@ -2,7 +2,7 @@ car_length: 0.95
 map_resolution: 0.1
 max_duration: 1.0
 min_duration: 0.1
-min_v: -1.0
+min_v: -0.5
 max_v: 1.0
 max_steering_angle: 0.5236
 min_steering_angle: -0.5236
