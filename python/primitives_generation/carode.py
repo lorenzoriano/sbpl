@@ -45,7 +45,7 @@ class Car(object):
     def simulate(self, duration, time_step=1.0):
         """Simulate the car for a given duration.
 
-        The final returned trajectory will havethe initial and the ending
+        The final returned trajectory will have the initial and the ending
         position, plus all the in-between poses calculated each specified
         time_step (default 1.0).
 
@@ -117,6 +117,8 @@ class Car(object):
         angle and duration to bring the car from it's current position to the
         desired end_pos. Internally it uses scipy fmin_slsqp to find a solution.
 
+        NOTE: time_bounds[0] should be strictly greater than 0
+
         Several starting conditions can be specified with the num_attempts
         parameter.
 
@@ -149,7 +151,6 @@ class Car(object):
             err = err_x**2 + err_y**2 + err_th**2
             return err
 
-        #initial_control = [vel_bounds[1], 0, time_bounds[0]]
         inits = zip(np.linspace(vel_bounds[0], vel_bounds[1], num_attempts),
                     [0]*num_attempts,
                     [time_bounds[0]] * num_attempts)
@@ -259,9 +260,8 @@ if __name__ == "__main__":
     min_steer = -np.pi/4
     car = Car(0.95, max_vel, min_vel, max_steer, min_steer,
                      lin_vel=0.0, steer_angle=0)
-    car.set_control(1070.86996923,   247.26455191)
+    car.set_control(0.5, 0.21)
 
-    max_time =  2560.00974537
-    #steps = np.linspace(1, 2560.00974537, 100)
+    max_time =  1.0
     traj2 = car.simulate( max_time)
     print traj2

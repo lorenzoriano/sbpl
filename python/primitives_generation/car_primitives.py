@@ -368,11 +368,13 @@ class CarPrimitives:
         return np.vstack(traj)
 
     def run(self, number_of_clusters, number_of_cost_classes,
-            destination_filename = None):
+            destination_filename = None,
+            backward_multiplier = 2):
         self.create_primitives()
         self.cluster_primitives_from_angle(number_of_clusters,
                                            store_result=True)
-        self.calculate_primitive_costs(number_of_classes = number_of_cost_classes)
+        self.calculate_primitive_costs(number_of_classes = number_of_cost_classes,
+                                       backward_multiplier = backward_multiplier)
         return self.write_primitives(destination_filename)
 
 
