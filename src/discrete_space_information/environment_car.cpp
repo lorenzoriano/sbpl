@@ -7,6 +7,8 @@
 #include <yaml-cpp/yaml.h>
 #include <fstream>
 
+#include <boost/make_shared.hpp>
+
 template< class MapType >
 void print_map(const MapType & m)
 {
@@ -72,23 +74,20 @@ void EnvironmentCar::setGoal(float x, float y, float th) {
     //add the new state if it doesn't exist
     goal_id_ = c_hash;
     SBPL_DEBUG("Setting goal %s with hash %zu\n", c->repr().c_str(), c_hash);
-    int id = addIfRequired(c);
-    goal_cell_ = findCell(id);
-
+    goal_cell_ = addIfRequired(c);
 }
 
 void EnvironmentCar::setStart(float x, float y, float th) {
 
     bool is_forward = true;
-    ContinuousCellPtr c( new ContinuousCell(x, y, th, is_forward,
-            map_res_, theta_bins_, fixed_cells_));
+    ContinuousCellPtr c = boost::make_shared<ContinuousCell>(x, y, th, is_forward,
+            map_res_, theta_bins_, fixed_cells_);
     std::size_t c_hash = c->hash();
 
     //add the new state if it doesn't exist
     start_id_ = c_hash;
     SBPL_DEBUG("Setting start %s with hash %zu\n", c->repr().c_str(), c_hash);
-    int id = addIfRequired(c);
-    start_cell_ = findCell(id);
+    start_cell_ = addIfRequired(c);
 }
 
 bool EnvironmentCar::isValidCell(const ContinuousCellPtr &c) {
@@ -110,8 +109,8 @@ int EnvironmentCar::GetFromToHeuristic(int FromStateID, int ToStateID) {
 int EnvironmentCar::GetGoalHeuristic(int stateID) {
     ContinuousCellPtr start = findCell(stateID);
 
-    float dx = start->x() - goal_cell_->x();
-    float dy = start->y() - goal_cell_->y();
+    float dx = start->x() - goal_cell_.lock()->x();
+    float dy = start->y() - goal_cell_.lock()->y();
 
 
     //manhattan distance
@@ -131,7 +130,7 @@ int EnvironmentCar::GetStartHeuristic(int stateID) {
     return 0;
 }
 
-const ContinuousCellPtr& EnvironmentCar::findCell(int state_id) const {
+ContinuousCellPtr EnvironmentCar::findCell(int state_id) const {
     //get hash
     hash_int_map_t::left_map::const_iterator hash_i = hash_int_map_.left.find(state_id);
     if (hash_i == hash_int_map_.left.end()) {
@@ -151,25 +150,6 @@ const ContinuousCellPtr& EnvironmentCar::findCell(int state_id) const {
     return i->second;
 }
 
-ContinuousCellPtr EnvironmentCar::findCell(int state_id){
-    //get hash
-    hash_int_map_t::left_map::iterator hash_i = hash_int_map_.left.find(state_id);
-    if (hash_i == hash_int_map_.left.end()) {
-        std::ostringstream ss;
-        ss<<"Error: the state with id "<<state_id<<" does not exist!"<<std::endl;
-        throw(CarException(ss.str()));
-    }
-
-    //get cell
-    std::map<std::size_t, ContinuousCellPtr>::iterator i = cells_map_.find(hash_i->second);
-    if (i == cells_map_.end()) {
-        std::ostringstream ss;
-        ss<<"Error: the state with hash id "<<hash_i->first<<" does not exist!";
-        throw (CarException(ss.str()));
-    }
-    SBPL_DEBUG("State id %d has been found with hash %zu\n", state_id, i->second.hash());
-    return i->second;
-}
 
 int EnvironmentCar::findIdFromHash(std::size_t hash) {
     hash_int_map_t::right_map::iterator i = hash_int_map_.right.find(hash);
@@ -182,17 +162,14 @@ int EnvironmentCar::findIdFromHash(std::size_t hash) {
     return i->second;
 }
 
-int EnvironmentCar::addIfRequired(const ContinuousCellPtr &c) {
+ContinuousCellPtr EnvironmentCar::addIfRequired(ContinuousCellPtr c) {
     std::size_t hash = c->hash();
     //get starting state
     hash_int_map_t::right_map::iterator i = hash_int_map_.right.find(hash);
     if (i != hash_int_map_.right.end()) {//element already exist
         SBPL_DEBUG("Cell with hash %zu already exists with id %d, not adding\n", hash, i->second);
-        return i->second;
+        return cells_map_[hash];
     }
-
-    //DEBUG!!!
-//    std::cout<<c.repr()<<"\n";
 
     //a new entry needs to be added
     if (!cells_map_.insert(std::make_pair(hash, c)).second) {
@@ -200,9 +177,10 @@ int EnvironmentCar::addIfRequired(const ContinuousCellPtr &c) {
         SBPL_ERROR("The hash value %zu is already in the map!\n", hash);
         throw(SBPL_Exception());
     }
-//    SBPL_DEBUG("Adding a new cell with hash %zu\n", hash);
-    return addHashMapping(hash);
 
+    int new_id = addHashMapping(hash);
+    c->setId(new_id);
+    return c;
 }
 
 void EnvironmentCar::GetSuccs(int SourceStateID, std::vector<int>* SuccIDV, std::vector<int>* CostV) {
@@ -224,8 +202,8 @@ void EnvironmentCar::GetSuccs(int SourceStateID, std::vector<int>* SuccIDV, std:
         CarSimulator::state_type new_state = sim.simulate((*p).duration, simulation_time_step_);
 
         bool is_forward = new_v >= 0;
-        ContinuousCellPtr c(new ContinuousCell(new_state, is_forward,
-                map_res_, theta_bins_, fixed_cells_));
+        ContinuousCellPtr c = boost::make_shared<ContinuousCell>(new_state, is_forward,
+                map_res_, theta_bins_, fixed_cells_);
 
         SBPL_DEBUG("Motion primitive: dv: %f, dth: %fm cost: %d\n", (*p).v, (*p).steer, (*p).cost);
         SBPL_DEBUG("Successor cell %s\n", c.repr().c_str());
@@ -235,11 +213,10 @@ void EnvironmentCar::GetSuccs(int SourceStateID, std::vector<int>* SuccIDV, std:
             continue;
 
         //add the new state if it doesn't exist
-        int c_id = addIfRequired(c);
-        c->setId(c_id);
+        c = addIfRequired(c);
 
         //add the successor state
-        SuccIDV->push_back(c_id);
+        SuccIDV->push_back(c->id());
         CostV->push_back((*p).cost);
 
         //creating the links in the cells
@@ -303,19 +280,19 @@ bool EnvironmentCar::loadPrimitives(const char* filename) {
 int EnvironmentCar::addHashMapping(std::size_t hash_entry) {
 
     //get the next entry
-    int int_entry = hash_int_map_.size();
-    SBPL_DEBUG("Cell with hash id %zu will have int id %d\n", hash_entry, int_entry);
-    hash_int_map_.insert(hash_int_map_t::value_type(int_entry, hash_entry));
+    int new_id = hash_int_map_.size();
+    SBPL_DEBUG("Cell with hash id %zu will have int id %d\n", hash_entry, new_id);
+    hash_int_map_.insert(hash_int_map_t::value_type(new_id, hash_entry));
 
     //insert and initialize the mappings
     //still obscure code from original SBPL
     int* entry = new int[NUMOFINDICES_STATEID2IND];
     StateID2IndexMapping.push_back(entry);
     for (unsigned int i = 0; i < NUMOFINDICES_STATEID2IND; i++) {
-        StateID2IndexMapping[int_entry][i] = -1;
+        StateID2IndexMapping[new_id][i] = -1;
     }
 
-    if (int_entry != (int)StateID2IndexMapping.size() - 1) {
+    if (new_id != (int)StateID2IndexMapping.size() - 1) {
         SBPL_ERROR("ERROR in Env... function: last state has incorrect stateID\n");
         throw new SBPL_Exception();
     }
@@ -324,39 +301,39 @@ int EnvironmentCar::addHashMapping(std::size_t hash_entry) {
     print_map(hash_int_map_.left);
 //    std::cout<<std::endl;
 
-    return int_entry;
+    return new_id;
 }
 
-motion_primitive EnvironmentCar::findPrimitive(const ContinuousCellPtr& source, const ContinuousCellPtr& dest) const{
-    for (std::vector<motion_primitive>::const_iterator p = primitives_.begin(); p != primitives_.end(); p++) {
-        if (applyPrimitive(source, *p).get() == dest.get())
-            return *p;
-    }
-    //when reaching this position, no primitive has been found
-    std::ostringstream ss;
-    ss<<"No primitive found to go from cell "<<source<<" to cell "<<dest;
-    throw CarException(ss.str());
-}
+//motion_primitive EnvironmentCar::findPrimitive(const ContinuousCellPtr& source, const ContinuousCellPtr& dest) const{
+//    for (std::vector<motion_primitive>::const_iterator p = primitives_.begin(); p != primitives_.end(); p++) {
+//        if (applyPrimitive(source, *p).get() == dest.get())
+//            return *p;
+//    }
+//    //when reaching this position, no primitive has been found
+//    std::ostringstream ss;
+//    ss<<"No primitive found to go from cell "<<source<<" to cell "<<dest;
+//    throw CarException(ss.str());
+//}
 
-motion_primitive EnvironmentCar::findPrimitive(int start_id, int dest_id) const{
-    const ContinuousCellPtr& start = findCell(start_id);
-    const ContinuousCellPtr& dest = findCell(dest_id);
-    return findPrimitive(start, dest);
-}
+//motion_primitive EnvironmentCar::findPrimitive(int start_id, int dest_id) const{
+//    const ContinuousCellPtr& start = findCell(start_id);
+//    const ContinuousCellPtr& dest = findCell(dest_id);
+//    return findPrimitive(start, dest);
+//}
 
-ContinuousCellPtr EnvironmentCar::applyPrimitive(const ContinuousCellPtr& start, const motion_primitive& p) const {
-    CarSimulator sim(car_length_);
-    sim.setInitialState(start->x(), start->y(), start->th());
-    sim.setControl(p.v, p.steer);
-    CarSimulator::state_type new_state = sim.simulate(p.duration, simulation_time_step_);
+//ContinuousCellPtr EnvironmentCar::applyPrimitive(const ContinuousCellPtr& start, const motion_primitive& p) const {
+//    CarSimulator sim(car_length_);
+//    sim.setInitialState(start->x(), start->y(), start->th());
+//    sim.setControl(p.v, p.steer);
+//    CarSimulator::state_type new_state = sim.simulate(p.duration, simulation_time_step_);
 
-    bool is_forward = p.v >= 0;
-    ContinuousCellPtr c( new ContinuousCell(new_state, is_forward,
-            map_res_, theta_bins_, fixed_cells_));
-    return c;
-}
+//    bool is_forward = p.v >= 0;
+//    ContinuousCellPtr c( new ContinuousCell(new_state, is_forward,
+//            map_res_, theta_bins_, fixed_cells_));
+//    return c;
+//}
 
-bool EnvironmentCar::saveSolutionYAML(const std::vector<int>& ids, const char* filename) {
+bool EnvironmentCar::saveSolutionYAML(const std::vector<int>& ids, const char* filename) const {
     std::ofstream fout(filename);
     if (! fout.good()) {
         std::string msg = "Error while opening the file ";
@@ -366,58 +343,119 @@ bool EnvironmentCar::saveSolutionYAML(const std::vector<int>& ids, const char* f
 
     YAML::Emitter doc;
 
-    //first going with the single cells
+    //all the cells
     doc<<YAML::BeginMap;
-    doc<<YAML::Key<<"nodes";
-    doc<<YAML::Value;
-    doc<<YAML::BeginSeq;
-    for (std::vector<int>::const_iterator id = ids.begin(); id != ids.end(); id++) {
-        const ContinuousCellPtr& c = findCell(*id);
+    {
+        doc<<YAML::Key<<"nodes";
+        doc<<YAML::Value;
         doc<<YAML::BeginMap;
-        doc<<YAML::Key<<"x";
-        doc<<YAML::Value<<c->x();
-        doc<<YAML::Key<<"y";
-        doc<<YAML::Value<<c->y();
-        doc<<YAML::Key<<"th";
-        doc<<YAML::Value<<c->th();
-        doc<<YAML::Key<<"is_forward";
-        doc<<YAML::Value<<c->is_forward();
-        doc<<YAML::Key<<"id";
-        doc<<YAML::Value<<c->id();
-        doc<<YAML::Key<<"hash";
-        doc<<YAML::Value<<c->hash();
+        {
+            for (std::vector<int>::const_iterator id = ids.begin(); id != ids.end(); id++) {
 
+                //NODE INFO
+                ContinuousCellPtr c = findCell(*id);
+                doc<<YAML::Key<<*id;
+                doc<<YAML::Value;
+                doc<<YAML::BeginMap;
+                {
+                    doc<<YAML::Key<<"x";
+                    doc<<YAML::Value<<c->x();
+                    doc<<YAML::Key<<"y";
+                    doc<<YAML::Value<<c->y();
+                    doc<<YAML::Key<<"th";
+                    doc<<YAML::Value<<c->th();
+                    doc<<YAML::Key<<"is_forward";
+                    doc<<YAML::Value<<c->is_forward();
+                    doc<<YAML::Key<<"id";
+                    doc<<YAML::Value<<c->id();
+                    doc<<YAML::Key<<"hash";
+                    doc<<YAML::Value<<c->hash();
+
+                    //OUTGOING LINKS
+                    doc<<YAML::Key<<"out_links";
+                    doc<<YAML::Value;
+                    doc<<YAML::BeginMap;
+                    {
+                        const ContinuousCell::prims_cells_t& succs = c->getSuccessors();
+                        for (ContinuousCell::prims_cells_t::const_iterator i =  succs.begin(); i != succs.end(); i++) {
+
+                            ConstContinuousCellWeakPtr next_cell = i->second.second;
+                            const motion_primitive& p = i->second.first;
+
+                            doc<<YAML::Key<<next_cell.lock()->id();
+                            doc<<YAML::Value;
+
+                            doc<<YAML::BeginMap;
+                            {
+                                doc<<YAML::Key<<"from";
+                                doc<<YAML::Value<<c->id();
+                                doc<<YAML::Key<<"to";
+                                doc<<YAML::Value<<next_cell.lock()->id();
+
+                                doc<<YAML::Key<<"primitive";
+                                doc<<YAML::Value;
+                                doc<<YAML::BeginMap;
+                                {
+                                    doc<<YAML::Key<<"v";
+                                    doc<<YAML::Value<<p.v;
+                                    doc<<YAML::Key<<"steer";
+                                    doc<<YAML::Value<<p.steer;
+                                    doc<<YAML::Key<<"duration";
+                                    doc<<YAML::Value<<p.duration;
+                                }
+                                doc<<YAML::EndMap;
+                            }
+                            doc<<YAML::EndMap;
+                        }
+                    }
+                    doc<<YAML::EndMap;
+
+                    //INCOMING LINKS
+                    doc<<YAML::Key<<"in_links";
+                    doc<<YAML::Value;
+                    doc<<YAML::BeginMap;
+                    {
+                        const ContinuousCell::prims_cells_t& preds = c->getPredecessors();
+                        for (ContinuousCell::prims_cells_t::const_iterator i =  preds.begin(); i != preds.end(); i++) {
+
+                            ConstContinuousCellWeakPtr next_cell = i->second.second;
+                            const motion_primitive& p = i->second.first;
+
+                            doc<<YAML::Key<<next_cell.lock()->id();
+                            doc<<YAML::Value;
+
+                            doc<<YAML::BeginMap;
+                            {
+                                doc<<YAML::Key<<"from";
+                                doc<<YAML::Value<<next_cell.lock()->id();
+                                doc<<YAML::Key<<"to";
+                                doc<<YAML::Value<<c->id();
+
+                                doc<<YAML::Key<<"primitive";
+                                doc<<YAML::Value;
+                                doc<<YAML::BeginMap;
+                                {
+                                    doc<<YAML::Key<<"v";
+                                    doc<<YAML::Value<<p.v;
+                                    doc<<YAML::Key<<"steer";
+                                    doc<<YAML::Value<<p.steer;
+                                    doc<<YAML::Key<<"duration";
+                                    doc<<YAML::Value<<p.duration;
+                                }
+                                doc<<YAML::EndMap;
+                            }
+                            doc<<YAML::EndMap;
+                        }
+                    }
+                    doc<<YAML::EndMap;
+                }
+                doc<<YAML::EndMap;
+            }
+        }
         doc<<YAML::EndMap;
     }
-    doc<<YAML::EndSeq;
-
-    //now building the graph
-    doc<<YAML::Key<<"links";
-    doc<<YAML::Value;
-    doc<<YAML::BeginSeq;
-    for (std::vector<int>::const_iterator id = ids.begin(); id != ids.end(); id++) {
-        const ContinuousCellPtr& c = findCell(*id);
-        const ContinuousCell::prims_cells_t& succs = c->getSuccessors();
-        for (ContinuousCell::prims_cells_t::const_iterator i =  succs.begin(); i != succs.end(); i++) {
-
-            const ContinuousCellWeakPtr& next_cell = i->second;
-            const motion_primitive& p = i->first;
-
-            doc<<YAML::BeginMap;
-            doc<<YAML::Key<<"from";
-            doc<<YAML::Value<<c->id();
-            doc<<YAML::Key<<"to";
-            doc<<YAML::Value<<next_cell.lock()->id();
-            doc<<YAML::Key<<"primitive";
-            doc<<YAML::Value<<YAML::BeginSeq<<p.v<<p.steer<<p.duration<<YAML::EndSeq;
-            doc<<YAML::EndMap;
-
-
-        }
-    }
-    doc<<YAML::EndSeq;
-
     doc<<YAML::EndMap;
+    doc<<YAML::EndDoc;
 
     fout<<doc.c_str();
 }

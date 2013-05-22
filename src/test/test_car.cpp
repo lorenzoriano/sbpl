@@ -37,7 +37,7 @@ int main() {
         throw new SBPL_Exception();
     }
 
-    double allocated_time_secs = 40.; // in seconds
+    double allocated_time_secs = 200.; // in seconds
     double initialEpsilon = 5.0;
     bool bsearchuntilfirstsolution = false;
     planner->set_initialsolution_eps(initialEpsilon);
@@ -61,7 +61,7 @@ int main() {
     for (std::vector<int>::iterator i = solution_stateIDs_V.begin(); i != solution_stateIDs_V.end(); i++) {
         const ContinuousCellPtr& c = env.findCell(*i);
 //        f<<c.x()<<" "<<c.y()<<" "<<c.th()<<" "<<c.is_forward()<<std::endl;
-        f<<*(c.get())<<std::endl;
+        f<<*(c.get())<<" "<<c->id()<<std::endl;
     }
     f.close();
 

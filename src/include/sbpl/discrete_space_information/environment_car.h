@@ -159,8 +159,10 @@ std::ostream& operator<<(std::ostream& stream, const motion_primitive& p) {
 class ContinuousCell {
 
 public:
-    typedef std::vector<std::pair<motion_primitive,
-                                 boost::weak_ptr<ContinuousCell> > >prims_cells_t;
+    typedef std::map<int,
+                     std::pair<motion_primitive,
+                               boost::weak_ptr<const ContinuousCell> > >
+            prims_cells_t;
 
     ContinuousCell(float x, float y, float th,
                    bool is_forward,
@@ -254,7 +256,7 @@ public:
             hash_combine(seed, discretize_coordinate(y_, map_res_));
             hash_combine(seed, bin_angle(th_, theta_bins_));
         }
-        hash_combine(seed, is_forward_);
+        hash_combine(seed, int(is_forward_));
 
         cached_hash_ = seed;
         hash_calculated_ = true;
@@ -284,12 +286,12 @@ public:
     friend std::ostream& operator<<(std::ostream& stream, const ContinuousCell& matrix);
 
 
-    void addPredecessor(const motion_primitive& p, const boost::weak_ptr<ContinuousCell>& c) {
-        predecessors_.push_back(std::make_pair(p, c));
+    void addPredecessor(const motion_primitive& p, const boost::shared_ptr<ContinuousCell>& c) {
+        predecessors_[c->id()] = std::make_pair(p, c);
     }
 
-    void addSuccessor(const motion_primitive& p, const boost::weak_ptr<ContinuousCell>& c) {
-        successors_.push_back(std::make_pair(p, c));
+    void addSuccessor(const motion_primitive& p, const boost::shared_ptr<ContinuousCell>& c) {
+        successors_[c->id()] = std::make_pair(p, c);
     }
 
     const prims_cells_t& getPredecessors() const {
@@ -316,6 +318,7 @@ private:
 };
 
 typedef boost::shared_ptr<ContinuousCell> ContinuousCellPtr;
+typedef boost::weak_ptr<const ContinuousCell> ConstContinuousCellWeakPtr;
 typedef boost::weak_ptr<ContinuousCell> ContinuousCellWeakPtr;
 
 std::ostream& operator<<(std::ostream& stream, const ContinuousCell& cell) {
@@ -480,24 +483,23 @@ public:
      * @param state_id the id of the cell
      * @return the cell
      */
-    const ContinuousCellPtr& findCell(int state_id) const;
-    ContinuousCellPtr findCell(int state_id);
+    ContinuousCellPtr findCell(int state_id) const;
 
     int numStates() const {
         assert(cells_map_.size() == hash_int_map_.size());
         return cells_map_.size();
     }
 
-    motion_primitive findPrimitive(const ContinuousCellPtr& source, const ContinuousCellPtr& dest) const;
-    motion_primitive findPrimitive(int start_id, int dest_id) const;
-    ContinuousCellPtr applyPrimitive(const ContinuousCellPtr& start, const motion_primitive& p) const;
+//    motion_primitive findPrimitive(const ContinuousCellPtr& source, const ContinuousCellPtr& dest) const;
+//    motion_primitive findPrimitive(int start_id, int dest_id) const;
+//    ContinuousCellPtr applyPrimitive(const ContinuousCellPtr& start, const motion_primitive& p) const;
 
-    bool saveSolutionYAML(const std::vector<int>& ids, const char* filename);
+    bool saveSolutionYAML(const std::vector<int>& ids, const char* filename) const;
 
 protected:
 
     int addHashMapping(std::size_t hash_entry);
-    int addIfRequired(const ContinuousCellPtr& c);
+    ContinuousCellPtr addIfRequired(ContinuousCellPtr c);
     int findIdFromHash(std::size_t hash);
 
 
@@ -520,8 +522,8 @@ protected:
 
     std::size_t start_id_;
     std::size_t goal_id_;
-    ContinuousCellPtr goal_cell_;
-    ContinuousCellPtr start_cell_;
+    ContinuousCellWeakPtr goal_cell_;
+    ContinuousCellWeakPtr start_cell_;
 };
 
 std::ostream& operator<<(std::ostream& stream, const EnvironmentCar& env) {
