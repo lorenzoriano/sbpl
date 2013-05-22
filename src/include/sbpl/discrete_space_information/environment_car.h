@@ -148,7 +148,6 @@ std::ostream& operator<<(std::ostream& stream, const motion_primitive& p) {
     return stream;
 }
 
-#define FIXED_CELLS 0
 
 /**
  * @brief This is cell in a lattice. The x,y,th values will be discretized
@@ -453,8 +452,6 @@ public:
     motion_primitive findPrimitive(const ContinuousCell& source, const ContinuousCell& dest) const;
     motion_primitive findPrimitive(int start_id, int dest_id) const;
     ContinuousCell applyPrimitive(const ContinuousCell& start, const motion_primitive& p) const;
-    std::vector<CarSimulator::state_type> trajectoryFromIds(std::vector<int> ids,
-                                                            unsigned int number_of_steps = 10) const;
 
 protected:
 
