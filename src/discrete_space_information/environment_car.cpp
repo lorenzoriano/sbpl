@@ -65,33 +65,33 @@ void EnvironmentCar::setGoal(float x, float y, float th) {
 
     bool is_forward = true;
 
-    ContinuousCell c(x, y, th, is_forward,
-            map_res_, theta_bins_, fixed_cells_);
-    std::size_t c_hash = c.hash();
+    ContinuousCellPtr c(new ContinuousCell(x, y, th, is_forward,
+            map_res_, theta_bins_, fixed_cells_));
+    std::size_t c_hash = c->hash();
 
     //add the new state if it doesn't exist
     goal_id_ = c_hash;
-    SBPL_DEBUG("Setting goal %s with hash %zu\n", c.repr().c_str(), c_hash);
+    SBPL_DEBUG("Setting goal %s with hash %zu\n", c->repr().c_str(), c_hash);
     int id = addIfRequired(c);
-    goal_cell_ = &findCell(id);
+    goal_cell_ = findCell(id);
 
 }
 
 void EnvironmentCar::setStart(float x, float y, float th) {
 
     bool is_forward = true;
-    ContinuousCell c(x, y, th, is_forward,
-            map_res_, theta_bins_, fixed_cells_);
-    std::size_t c_hash = c.hash();
+    ContinuousCellPtr c( new ContinuousCell(x, y, th, is_forward,
+            map_res_, theta_bins_, fixed_cells_));
+    std::size_t c_hash = c->hash();
 
     //add the new state if it doesn't exist
     start_id_ = c_hash;
-    SBPL_DEBUG("Setting start %s with hash %zu\n", c.repr().c_str(), c_hash);
+    SBPL_DEBUG("Setting start %s with hash %zu\n", c->repr().c_str(), c_hash);
     int id = addIfRequired(c);
-    start_cell_ = &findCell(id);
+    start_cell_ = findCell(id);
 }
 
-bool EnvironmentCar::isValidCell(const ContinuousCell& c) {
+bool EnvironmentCar::isValidCell(const ContinuousCellPtr &c) {
 
     return true;
 }
@@ -108,10 +108,10 @@ int EnvironmentCar::GetFromToHeuristic(int FromStateID, int ToStateID) {
 }
 
 int EnvironmentCar::GetGoalHeuristic(int stateID) {
-    const ContinuousCell& start = findCell(stateID);
+    ContinuousCellPtr start = findCell(stateID);
 
-    float dx = start.x() - goal_cell_->x();
-    float dy = start.y() - goal_cell_->y();
+    float dx = start->x() - goal_cell_->x();
+    float dy = start->y() - goal_cell_->y();
 
 
     //manhattan distance
@@ -131,7 +131,7 @@ int EnvironmentCar::GetStartHeuristic(int stateID) {
     return 0;
 }
 
-const ContinuousCell& EnvironmentCar::findCell(int state_id) const {
+const ContinuousCellPtr& EnvironmentCar::findCell(int state_id) const {
     //get hash
     hash_int_map_t::left_map::const_iterator hash_i = hash_int_map_.left.find(state_id);
     if (hash_i == hash_int_map_.left.end()) {
@@ -141,7 +141,7 @@ const ContinuousCell& EnvironmentCar::findCell(int state_id) const {
     }
 
     //get cell
-    std::map<std::size_t, ContinuousCell>::const_iterator i = cells_map_.find(hash_i->second);
+    std::map<std::size_t, ContinuousCellPtr>::const_iterator i = cells_map_.find(hash_i->second);
     if (i == cells_map_.end()) {
         std::ostringstream ss;
         ss<<"Error: the state with hash id "<<hash_i->first<<" does not exist!";
@@ -151,7 +151,7 @@ const ContinuousCell& EnvironmentCar::findCell(int state_id) const {
     return i->second;
 }
 
-ContinuousCell& EnvironmentCar::findCell(int state_id){
+ContinuousCellPtr EnvironmentCar::findCell(int state_id){
     //get hash
     hash_int_map_t::left_map::iterator hash_i = hash_int_map_.left.find(state_id);
     if (hash_i == hash_int_map_.left.end()) {
@@ -161,7 +161,7 @@ ContinuousCell& EnvironmentCar::findCell(int state_id){
     }
 
     //get cell
-    std::map<std::size_t, ContinuousCell>::iterator i = cells_map_.find(hash_i->second);
+    std::map<std::size_t, ContinuousCellPtr>::iterator i = cells_map_.find(hash_i->second);
     if (i == cells_map_.end()) {
         std::ostringstream ss;
         ss<<"Error: the state with hash id "<<hash_i->first<<" does not exist!";
@@ -182,8 +182,8 @@ int EnvironmentCar::findIdFromHash(std::size_t hash) {
     return i->second;
 }
 
-int EnvironmentCar::addIfRequired(const ContinuousCell& c) {
-    std::size_t hash = c.hash();
+int EnvironmentCar::addIfRequired(const ContinuousCellPtr &c) {
+    std::size_t hash = c->hash();
     //get starting state
     hash_int_map_t::right_map::iterator i = hash_int_map_.right.find(hash);
     if (i != hash_int_map_.right.end()) {//element already exist
@@ -207,14 +207,14 @@ int EnvironmentCar::addIfRequired(const ContinuousCell& c) {
 
 void EnvironmentCar::GetSuccs(int SourceStateID, std::vector<int>* SuccIDV, std::vector<int>* CostV) {
 
-    const ContinuousCell& start = findCell(SourceStateID);
+    ContinuousCellPtr start = findCell(SourceStateID);
     SBPL_DEBUG("\nGetting successors of cell %s\n", start.repr().c_str());
 
     SuccIDV->reserve(primitives_.size());
     CostV->reserve(primitives_.size());
 
     CarSimulator sim(car_length_);
-    sim.setInitialState(start.x(), start.y(), start.th());
+    sim.setInitialState(start->x(), start->y(), start->th());
 
     //now loop over all the primitives
     for (std::vector<motion_primitive>::iterator p = primitives_.begin(); p != primitives_.end(); p++) {
@@ -224,8 +224,8 @@ void EnvironmentCar::GetSuccs(int SourceStateID, std::vector<int>* SuccIDV, std:
         CarSimulator::state_type new_state = sim.simulate((*p).duration, simulation_time_step_);
 
         bool is_forward = new_v >= 0;
-        ContinuousCell c(new_state, is_forward,
-                map_res_, theta_bins_, fixed_cells_);
+        ContinuousCellPtr c(new ContinuousCell(new_state, is_forward,
+                map_res_, theta_bins_, fixed_cells_));
 
         SBPL_DEBUG("Motion primitive: dv: %f, dth: %fm cost: %d\n", (*p).v, (*p).steer, (*p).cost);
         SBPL_DEBUG("Successor cell %s\n", c.repr().c_str());
@@ -236,10 +236,15 @@ void EnvironmentCar::GetSuccs(int SourceStateID, std::vector<int>* SuccIDV, std:
 
         //add the new state if it doesn't exist
         int c_id = addIfRequired(c);
+        c->setId(c_id);
 
         //add the successor state
         SuccIDV->push_back(c_id);
         CostV->push_back((*p).cost);
+
+        //creating the links in the cells
+        start->addSuccessor(*p, c);
+        c->addPredecessor(*p, start);
 
     }
     SBPL_DEBUG("Finished finding the successors\n\n");
@@ -322,9 +327,9 @@ int EnvironmentCar::addHashMapping(std::size_t hash_entry) {
     return int_entry;
 }
 
-motion_primitive EnvironmentCar::findPrimitive(const ContinuousCell& source, const ContinuousCell& dest) const{
+motion_primitive EnvironmentCar::findPrimitive(const ContinuousCellPtr& source, const ContinuousCellPtr& dest) const{
     for (std::vector<motion_primitive>::const_iterator p = primitives_.begin(); p != primitives_.end(); p++) {
-        if (applyPrimitive(source, *p) == dest)
+        if (applyPrimitive(source, *p).get() == dest.get())
             return *p;
     }
     //when reaching this position, no primitive has been found
@@ -334,19 +339,85 @@ motion_primitive EnvironmentCar::findPrimitive(const ContinuousCell& source, con
 }
 
 motion_primitive EnvironmentCar::findPrimitive(int start_id, int dest_id) const{
-    const ContinuousCell& start = findCell(start_id);
-    const ContinuousCell& dest = findCell(dest_id);
+    const ContinuousCellPtr& start = findCell(start_id);
+    const ContinuousCellPtr& dest = findCell(dest_id);
     return findPrimitive(start, dest);
 }
 
-ContinuousCell EnvironmentCar::applyPrimitive(const ContinuousCell& start, const motion_primitive& p) const {
+ContinuousCellPtr EnvironmentCar::applyPrimitive(const ContinuousCellPtr& start, const motion_primitive& p) const {
     CarSimulator sim(car_length_);
-    sim.setInitialState(start.x(), start.y(), start.th());
+    sim.setInitialState(start->x(), start->y(), start->th());
     sim.setControl(p.v, p.steer);
     CarSimulator::state_type new_state = sim.simulate(p.duration, simulation_time_step_);
 
     bool is_forward = p.v >= 0;
-    ContinuousCell c(new_state, is_forward,
-            map_res_, theta_bins_, fixed_cells_);
+    ContinuousCellPtr c( new ContinuousCell(new_state, is_forward,
+            map_res_, theta_bins_, fixed_cells_));
     return c;
+}
+
+bool EnvironmentCar::saveSolutionYAML(const std::vector<int>& ids, const char* filename) {
+    std::ofstream fout(filename);
+    if (! fout.good()) {
+        std::string msg = "Error while opening the file ";
+        msg += filename;
+        throw CarException(msg);
+    }
+
+    YAML::Emitter doc;
+
+    //first going with the single cells
+    doc<<YAML::BeginMap;
+    doc<<YAML::Key<<"nodes";
+    doc<<YAML::Value;
+    doc<<YAML::BeginSeq;
+    for (std::vector<int>::const_iterator id = ids.begin(); id != ids.end(); id++) {
+        const ContinuousCellPtr& c = findCell(*id);
+        doc<<YAML::BeginMap;
+        doc<<YAML::Key<<"x";
+        doc<<YAML::Value<<c->x();
+        doc<<YAML::Key<<"y";
+        doc<<YAML::Value<<c->y();
+        doc<<YAML::Key<<"th";
+        doc<<YAML::Value<<c->th();
+        doc<<YAML::Key<<"is_forward";
+        doc<<YAML::Value<<c->is_forward();
+        doc<<YAML::Key<<"id";
+        doc<<YAML::Value<<c->id();
+        doc<<YAML::Key<<"hash";
+        doc<<YAML::Value<<c->hash();
+
+        doc<<YAML::EndMap;
+    }
+    doc<<YAML::EndSeq;
+
+    //now building the graph
+    doc<<YAML::Key<<"links";
+    doc<<YAML::Value;
+    doc<<YAML::BeginSeq;
+    for (std::vector<int>::const_iterator id = ids.begin(); id != ids.end(); id++) {
+        const ContinuousCellPtr& c = findCell(*id);
+        const ContinuousCell::prims_cells_t& succs = c->getSuccessors();
+        for (ContinuousCell::prims_cells_t::const_iterator i =  succs.begin(); i != succs.end(); i++) {
+
+            const ContinuousCellWeakPtr& next_cell = i->second;
+            const motion_primitive& p = i->first;
+
+            doc<<YAML::BeginMap;
+            doc<<YAML::Key<<"from";
+            doc<<YAML::Value<<c->id();
+            doc<<YAML::Key<<"to";
+            doc<<YAML::Value<<next_cell.lock()->id();
+            doc<<YAML::Key<<"primitive";
+            doc<<YAML::Value<<YAML::BeginSeq<<p.v<<p.steer<<p.duration<<YAML::EndSeq;
+            doc<<YAML::EndMap;
+
+
+        }
+    }
+    doc<<YAML::EndSeq;
+
+    doc<<YAML::EndMap;
+
+    fout<<doc.c_str();
 }

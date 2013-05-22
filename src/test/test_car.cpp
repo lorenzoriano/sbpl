@@ -15,8 +15,8 @@ int main() {
     EnvironmentCar env("/home/pezzotto/tmp/sbpl/car_primitives/world.yaml");
     env.loadPrimitives("/home/pezzotto/tmp/sbpl/car_primitives/primitives.yaml");
 
-    float end_x = 2.;
-    float end_y = 2.0;
+    float end_x = 0.0;
+    float end_y = 0;
     float end_th = M_PI;
 
     env.setGoal(end_x, end_y, end_th);
@@ -37,8 +37,8 @@ int main() {
         throw new SBPL_Exception();
     }
 
-    double allocated_time_secs = 30.; // in seconds
-    double initialEpsilon = 3.0;
+    double allocated_time_secs = 40.; // in seconds
+    double initialEpsilon = 5.0;
     bool bsearchuntilfirstsolution = false;
     planner->set_initialsolution_eps(initialEpsilon);
     planner->set_search_mode(bsearchuntilfirstsolution);
@@ -57,12 +57,15 @@ int main() {
         std::cout<<"Solution found!\n";
 
     //priting the solution
-    std::ofstream f("cells.txt");
+    std::ofstream f("/home/pezzotto/cells.txt");
     for (std::vector<int>::iterator i = solution_stateIDs_V.begin(); i != solution_stateIDs_V.end(); i++) {
-        const ContinuousCell& c = env.findCell(*i);
+        const ContinuousCellPtr& c = env.findCell(*i);
 //        f<<c.x()<<" "<<c.y()<<" "<<c.th()<<" "<<c.is_forward()<<std::endl;
-        f<<c<<std::endl;
+        f<<*(c.get())<<std::endl;
     }
     f.close();
+
+    //writing the yaml graph
+    env.saveSolutionYAML(solution_stateIDs_V, "/home/pezzotto/graph.yaml");
 
 }

@@ -29,7 +29,7 @@ int main() {
         //now testing the inverse primitves
         try {
             motion_primitive p = env.findPrimitive(0, next_id);
-            ContinuousCell& c = env.findCell(next_id);
+            const ContinuousCellPtr& c = env.findCell(next_id);
             std::cout<<"OK: Primitive "<<s<<": "<<p<<" leads to state ("<<c<<")\n";
         }
         catch(CarException& e){

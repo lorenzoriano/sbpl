@@ -7,6 +7,8 @@
 
 #include <boost/functional/hash.hpp>
 #include <boost/bimap.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/weak_ptr.hpp>
 
 #include <cmath>
 #include <iostream>
@@ -15,6 +17,7 @@
 #include <iomanip>
 #include <sstream>
 #include <exception>
+#include <utility>
 
 class CarException : public std::exception {
 public:
@@ -156,6 +159,9 @@ std::ostream& operator<<(std::ostream& stream, const motion_primitive& p) {
 class ContinuousCell {
 
 public:
+    typedef std::vector<std::pair<motion_primitive,
+                                 boost::weak_ptr<ContinuousCell> > >prims_cells_t;
+
     ContinuousCell(float x, float y, float th,
                    bool is_forward,
                    float map_res,
@@ -182,6 +188,7 @@ public:
         theta_bins_ = theta_bins;
         cached_hash_ = 0;
         hash_calculated_ = false;
+        id_ = -1;
     }
 
     ContinuousCell(const CarSimulator::state_type& p,
@@ -206,6 +213,14 @@ public:
         theta_bins_ = theta_bins;
         cached_hash_ = 0;
         hash_calculated_ = false;
+        id_ = -1;
+    }
+
+    int id() const {
+        return id_;
+    }
+    void setId(int value) {
+        id_ = value;
     }
 
     float x() const {
@@ -268,6 +283,23 @@ public:
 
     friend std::ostream& operator<<(std::ostream& stream, const ContinuousCell& matrix);
 
+
+    void addPredecessor(const motion_primitive& p, const boost::weak_ptr<ContinuousCell>& c) {
+        predecessors_.push_back(std::make_pair(p, c));
+    }
+
+    void addSuccessor(const motion_primitive& p, const boost::weak_ptr<ContinuousCell>& c) {
+        successors_.push_back(std::make_pair(p, c));
+    }
+
+    const prims_cells_t& getPredecessors() const {
+        return predecessors_;
+    }
+
+    const prims_cells_t& getSuccessors() const {
+        return successors_;
+    }
+
 private:
     float x_, y_, th_;
     bool is_forward_;
@@ -276,8 +308,15 @@ private:
     bool fixed_cells_;
     mutable bool hash_calculated_;
     mutable std::size_t cached_hash_;
+    int id_;
+
+    prims_cells_t predecessors_;
+    prims_cells_t successors_;
 
 };
+
+typedef boost::shared_ptr<ContinuousCell> ContinuousCellPtr;
+typedef boost::weak_ptr<ContinuousCell> ContinuousCellWeakPtr;
 
 std::ostream& operator<<(std::ostream& stream, const ContinuousCell& cell) {
     std::stringstream ss;
@@ -304,7 +343,7 @@ public:
     void setGoal(float x, float y, float th);
     void setStart(float x, float y, float th);
 
-    bool isValidCell(const ContinuousCell& c);
+    bool isValidCell(const ContinuousCellPtr& c);
 
     friend std::ostream& operator<<(std::ostream& stream, const EnvironmentCar& cell);
 
@@ -441,28 +480,30 @@ public:
      * @param state_id the id of the cell
      * @return the cell
      */
-    const ContinuousCell &findCell(int state_id) const;
-    ContinuousCell &findCell(int state_id);
+    const ContinuousCellPtr& findCell(int state_id) const;
+    ContinuousCellPtr findCell(int state_id);
 
     int numStates() const {
         assert(cells_map_.size() == hash_int_map_.size());
         return cells_map_.size();
     }
 
-    motion_primitive findPrimitive(const ContinuousCell& source, const ContinuousCell& dest) const;
+    motion_primitive findPrimitive(const ContinuousCellPtr& source, const ContinuousCellPtr& dest) const;
     motion_primitive findPrimitive(int start_id, int dest_id) const;
-    ContinuousCell applyPrimitive(const ContinuousCell& start, const motion_primitive& p) const;
+    ContinuousCellPtr applyPrimitive(const ContinuousCellPtr& start, const motion_primitive& p) const;
+
+    bool saveSolutionYAML(const std::vector<int>& ids, const char* filename);
 
 protected:
 
     int addHashMapping(std::size_t hash_entry);
-    int addIfRequired(const ContinuousCell &c);
+    int addIfRequired(const ContinuousCellPtr& c);
     int findIdFromHash(std::size_t hash);
 
 
     std::vector<motion_primitive> primitives_;
     float simulation_time_step_;
-    std::map<std::size_t, ContinuousCell> cells_map_;
+    std::map<std::size_t, ContinuousCellPtr> cells_map_;
 
     typedef boost::bimap<int, std::size_t> hash_int_map_t;
     hash_int_map_t hash_int_map_;
@@ -479,8 +520,8 @@ protected:
 
     std::size_t start_id_;
     std::size_t goal_id_;
-    ContinuousCell* goal_cell_;
-    ContinuousCell* start_cell_;
+    ContinuousCellPtr goal_cell_;
+    ContinuousCellPtr start_cell_;
 };
 
 std::ostream& operator<<(std::ostream& stream, const EnvironmentCar& env) {
