@@ -19,6 +19,8 @@
 #include <exception>
 #include <utility>
 
+typedef double scalar;
+
 class CarException : public std::exception {
 public:
     CarException(std::string msg) {
@@ -44,9 +46,9 @@ private:
  * @param min the minimum value for x
  * @return the discretized value
  */
-inline int continousToDiscBins(float x, const int numofbins,
-                                const float max,
-                                const float min) {
+inline int continousToDiscBins(scalar  x, const int numofbins,
+                                const scalar  max,
+                                const scalar  min) {
     if ( x >max)
         x = max;
     else if (x < min)
@@ -55,7 +57,7 @@ inline int continousToDiscBins(float x, const int numofbins,
     return discv;
 }
 
-inline float wrap_angle(float angle) {
+inline scalar  wrap_angle(scalar  angle) {
     while (angle >= 2*M_PI)
         angle -= 2*M_PI;
 
@@ -73,7 +75,7 @@ inline float wrap_angle(float angle) {
  * @param numofbins the number of bins
  * @return the discretized value
  */
-inline int bin_angle(float x, int numofbins) {
+inline int bin_angle(scalar  x, int numofbins) {
     x = wrap_angle(x);
     return continousToDiscBins(x, numofbins, 2.*M_PI, 0.);
 }
@@ -85,7 +87,7 @@ inline int bin_angle(float x, int numofbins) {
  * @param numofbins the numebr of bins
  * @return the continous angle
  */
-inline float continous_angle(int x, int numofbins) {
+inline scalar  continous_angle(int x, int numofbins) {
     return x * 2.*M_PI / (numofbins-1);
 }
 
@@ -97,7 +99,7 @@ inline float continous_angle(int x, int numofbins) {
  * @param numofbins the number of bins
  * @return the (continous) discretized angle.
  */
-float discretize_angle(float angle, int numofbins) {
+scalar  discretize_angle(scalar  angle, int numofbins) {
     int binned = bin_angle(angle, numofbins);
     return continous_angle(binned, numofbins);
 }
@@ -110,7 +112,7 @@ float discretize_angle(float angle, int numofbins) {
  * @param map_resolution the resolution fo the map
  * @return the center of the corresponding cell
  */
-inline float discretize_coordinate(float x, float map_resolution) {
+inline scalar  discretize_coordinate(scalar  x, scalar  map_resolution) {
     return round(x/map_resolution) * map_resolution;
 }
 
@@ -120,9 +122,9 @@ inline float discretize_coordinate(float x, float map_resolution) {
  *
  * @param a1 first angle, in radians
  * @param a2 second angle, in radians
- * @return the difference between a1 and a2, between -pi and pi
+ * @return the difference between a1 and a2, in the interval [-pi and pi]
  */
-inline float diff_angle(float a1, float a2) {
+inline scalar  diff_angle(scalar  a1, scalar  a2) {
      return M_PI - fabs(M_PI - fabs(a1 -a2));
 }
 
@@ -131,9 +133,9 @@ inline float diff_angle(float a1, float a2) {
  * and cost.
  */
 struct motion_primitive {
-    float v;
-    float steer;
-    float duration;
+    scalar  v;
+    scalar  steer;
+    scalar  duration;
     int cost;
 
     bool operator==(const motion_primitive& p) {
@@ -164,9 +166,9 @@ public:
                                boost::weak_ptr<const ContinuousCell> > >
             prims_cells_t;
 
-    ContinuousCell(float x, float y, float th,
+    ContinuousCell(scalar x, scalar y, scalar th,
                    bool is_forward,
-                   float map_res,
+                   scalar map_res,
                    int theta_bins,
                    bool fixed_cells
                    ) {
@@ -195,7 +197,7 @@ public:
 
     ContinuousCell(const CarSimulator::state_type& p,
                    bool is_forward,
-                   float map_res, int theta_bins,
+                   scalar map_res, int theta_bins,
                    bool fixed_cells) {
 
         fixed_cells_ = fixed_cells;
@@ -225,13 +227,13 @@ public:
         id_ = value;
     }
 
-    float x() const {
+    scalar x() const {
         return x_;
     }
-    float y() const {
+    scalar y() const {
         return y_;
     }
-    float th() const {
+    scalar th() const {
         return th_;
     }
     bool is_forward() const {
@@ -247,13 +249,16 @@ public:
         std::size_t seed = 0;
 
         if (fixed_cells_) {
-            hash_combine(seed, x_);
-            hash_combine(seed, y_);
-            hash_combine(seed, th_);
+            int val = round(x_ / map_res_);
+            hash_combine(seed, val);
+            val = round(y_ / map_res_);
+            hash_combine(seed, val);
+            val = bin_angle(th_, theta_bins_);
+            hash_combine(seed, val);
         }
         else {
-            hash_combine(seed, discretize_coordinate(x_, map_res_));
-            hash_combine(seed, discretize_coordinate(y_, map_res_));
+            hash_combine(seed, int(discretize_coordinate(x_, map_res_)/ map_res_));
+            hash_combine(seed, int(discretize_coordinate(y_, map_res_)/ map_res_));
             hash_combine(seed, bin_angle(th_, theta_bins_));
         }
         hash_combine(seed, int(is_forward_));
@@ -302,11 +307,36 @@ public:
         return successors_;
     }
 
+    void checkHashCollision(const ContinuousCell& other) {
+        if (hash() == other.hash()) {
+            if (( fabs(x()  -  other.x()) > map_res_) ||
+                ( fabs(y()  -  other.y()) > map_res_) ||
+                ( fabs(diff_angle(th(), other.th())) > double(theta_bins_)/(2*M_PI)) ||
+                ( is_forward() != other.is_forward())
+               ) {
+
+                {
+                    this->hash_calculated_ = false;
+                    this->hash();
+                    other.hash_calculated_ = false;
+                    other.hash();
+                }
+
+                std::stringstream msg;
+                msg<<"Collision!!!"<<std::endl;
+                msg<<"C1: "<<x()<<", "<<y()<<", "<<th()<<", "<<is_forward()<<std::endl;
+                msg<<"C2: "<<other.x()<<", "<<other.y()<<", "<<other.th()<<", "<<other.is_forward()<<std::endl;
+                msg<<"Hashes: "<<hash()<<" -- "<<other.hash();
+                throw(std::logic_error(msg.str()));
+            }
+        }
+    }
+
 private:
-    float x_, y_, th_;
+    scalar x_, y_, th_;
     bool is_forward_;
-    float map_res_;
-    float theta_bins_;
+    scalar map_res_;
+    scalar theta_bins_;
     bool fixed_cells_;
     mutable bool hash_calculated_;
     mutable std::size_t cached_hash_;
@@ -333,18 +363,18 @@ std::ostream& operator<<(std::ostream& stream, const ContinuousCell& cell) {
 class EnvironmentCar : public DiscreteSpaceInformation {
 
 public:
-    EnvironmentCar(float map_res, float car_length,
+    EnvironmentCar(scalar map_res, scalar car_length,
                    bool fixed_cells,
                    int theta_bins,
-                   float max_v,
-                   float min_v,
-                   float max_steer,
-                   float min_steer);
+                   scalar max_v,
+                   scalar min_v,
+                   scalar max_steer,
+                   scalar min_steer);
 
     EnvironmentCar(const char *cfg_file);
 
-    void setGoal(float x, float y, float th);
-    void setStart(float x, float y, float th);
+    void setGoal(scalar x, scalar y, scalar th);
+    void setStart(scalar x, scalar y, scalar th);
 
     bool isValidCell(const ContinuousCellPtr& c);
 
@@ -500,24 +530,23 @@ protected:
 
     int addHashMapping(std::size_t hash_entry);
     ContinuousCellPtr addIfRequired(ContinuousCellPtr c);
-    int findIdFromHash(std::size_t hash);
 
 
     std::vector<motion_primitive> primitives_;
-    float simulation_time_step_;
+    scalar simulation_time_step_;
     std::map<std::size_t, ContinuousCellPtr> cells_map_;
 
     typedef boost::bimap<int, std::size_t> hash_int_map_t;
     hash_int_map_t hash_int_map_;
 
 
-    float car_length_;
-    float map_res_;
-    float theta_bins_;
-    float max_v_;
-    float min_v_;
-    float max_steer_;
-    float min_steer_;
+    scalar car_length_;
+    scalar map_res_;
+    scalar theta_bins_;
+    scalar  max_v_;
+    scalar  min_v_;
+    scalar  max_steer_;
+    scalar  min_steer_;
     bool fixed_cells_;
 
     std::size_t start_id_;

@@ -19,13 +19,13 @@ void print_map(const MapType & m)
     }
 }
 
-EnvironmentCar::EnvironmentCar(float map_res,
-                               float car_length, bool fixed_cells,
+EnvironmentCar::EnvironmentCar(scalar map_res,
+                               scalar car_length, bool fixed_cells,
                                int theta_bins,
-                               float max_v,
-                               float min_v,
-                               float max_steer,
-                               float min_steer) {
+                               scalar max_v,
+                               scalar min_v,
+                               scalar max_steer,
+                               scalar min_steer) {
 
     map_res_ = map_res;
     theta_bins_ = theta_bins;
@@ -63,7 +63,7 @@ bool EnvironmentCar::InitializeEnv(const char* sEnvFile) {
     doc["fixed_cells"] >> fixed_cells_;
 }
 
-void EnvironmentCar::setGoal(float x, float y, float th) {
+void EnvironmentCar::setGoal(scalar x, scalar y, scalar th) {
 
     bool is_forward = true;
 
@@ -77,7 +77,7 @@ void EnvironmentCar::setGoal(float x, float y, float th) {
     goal_cell_ = addIfRequired(c);
 }
 
-void EnvironmentCar::setStart(float x, float y, float th) {
+void EnvironmentCar::setStart(scalar x, scalar y, scalar th) {
 
     bool is_forward = true;
     ContinuousCellPtr c = boost::make_shared<ContinuousCell>(x, y, th, is_forward,
@@ -96,8 +96,8 @@ bool EnvironmentCar::isValidCell(const ContinuousCellPtr &c) {
 }
 
 bool EnvironmentCar::InitializeMDPCfg(MDPConfig *MDPCfg) {    
-    MDPCfg->startstateid = findIdFromHash(start_id_);
-    MDPCfg->goalstateid = findIdFromHash(goal_id_);
+    MDPCfg->startstateid = start_cell_.lock()->id();
+    MDPCfg->goalstateid = goal_cell_.lock()->id();
 }
 
 int EnvironmentCar::GetFromToHeuristic(int FromStateID, int ToStateID) {
@@ -109,15 +109,15 @@ int EnvironmentCar::GetFromToHeuristic(int FromStateID, int ToStateID) {
 int EnvironmentCar::GetGoalHeuristic(int stateID) {
     ContinuousCellPtr start = findCell(stateID);
 
-    float dx = start->x() - goal_cell_.lock()->x();
-    float dy = start->y() - goal_cell_.lock()->y();
+    scalar dx = start->x() - goal_cell_.lock()->x();
+    scalar dy = start->y() - goal_cell_.lock()->y();
 
 
     //manhattan distance
-//    float dist = fabs(dx) + fabs(dy);
+//    scalar dist = fabs(dx) + fabs(dy);
 
     //euclidean distance
-    float dist = sqrt(dx*dx + dy*dy);
+    scalar dist = sqrt(dx*dx + dy*dy);
 
     int heuristic = int(round(dist / map_res_));
 
@@ -150,24 +150,16 @@ ContinuousCellPtr EnvironmentCar::findCell(int state_id) const {
     return i->second;
 }
 
-
-int EnvironmentCar::findIdFromHash(std::size_t hash) {
-    hash_int_map_t::right_map::iterator i = hash_int_map_.right.find(hash);
-    if (i == hash_int_map_.right.end()) {//element already exist
-        std::ostringstream ss;
-        ss<<"Cell with hash "<<hash<<" does not exists";
-        throw (CarException(ss.str()));
-    }
-    SBPL_DEBUG("Cell with hash %zu has id %d\n", hash, i->second);
-    return i->second;
-}
-
 ContinuousCellPtr EnvironmentCar::addIfRequired(ContinuousCellPtr c) {
     std::size_t hash = c->hash();
     //get starting state
     hash_int_map_t::right_map::iterator i = hash_int_map_.right.find(hash);
     if (i != hash_int_map_.right.end()) {//element already exist
         SBPL_DEBUG("Cell with hash %zu already exists with id %d, not adding\n", hash, i->second);
+
+        //THIS IS SLOW AND HAS TO BE FIXED!!
+        cells_map_[hash]->checkHashCollision(*c.get());
+
         return cells_map_[hash];
     }
 
@@ -196,8 +188,8 @@ void EnvironmentCar::GetSuccs(int SourceStateID, std::vector<int>* SuccIDV, std:
 
     //now loop over all the primitives
     for (std::vector<motion_primitive>::iterator p = primitives_.begin(); p != primitives_.end(); p++) {
-        float new_v = (*p).v;
-        float new_steer = (*p).steer;
+        scalar new_v = (*p).v;
+        scalar new_steer = (*p).steer;
         sim.setControl(new_v, new_steer);
         CarSimulator::state_type new_state = sim.simulate((*p).duration, simulation_time_step_);
 
