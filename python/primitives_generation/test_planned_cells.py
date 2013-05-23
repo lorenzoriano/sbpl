@@ -7,7 +7,7 @@ def test_planned_cells(cells):
 
     #put a fictionary short of pi/2 limit here
     car = carode.Car(0.95, 1.0, -0.3,
-                     np.deg2rad(80), np.deg2rad(-89))
+                     np.deg2rad(80), np.deg2rad(-80))
     car.front_x = cells[0, 0]
     car.front_y = cells[0, 1]
     car.th - cells[0, 2]
