@@ -113,7 +113,7 @@ protected:
 
 };
 
-std::ostream& operator<<(std::ostream& stream, const CarSimulator::state_type& x) {
+inline std::ostream& operator<<(std::ostream& stream, const CarSimulator::state_type& x) {
     for (uint i=0; i<x.size(); i++) {
         stream<<x[i]<<" ";
     }

@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 2.8)
 PROJECT( sbpl )
 
-#set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Debug)
 #set(CMAKE_BUILD_TYPE Release)
-set(CMAKE_BUILD_TYPE RelWithDebInfo)
+#set(CMAKE_BUILD_TYPE RelWithDebInfo)
 
 include_directories(src/include)
 
@@ -25,6 +25,7 @@ add_library(sbpl SHARED
   src/utils/mdp.cpp
   src/utils/utils.cpp
   src/utils/2Dgridsearch.cpp	
+  src/utils/continuouscell.cpp
     )
 target_link_libraries(sbpl yaml-cpp)
 
