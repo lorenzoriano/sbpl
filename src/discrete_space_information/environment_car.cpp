@@ -296,35 +296,6 @@ int EnvironmentCar::addHashMapping(std::size_t hash_entry) {
     return new_id;
 }
 
-//motion_primitive EnvironmentCar::findPrimitive(const ContinuousCellPtr& source, const ContinuousCellPtr& dest) const{
-//    for (std::vector<motion_primitive>::const_iterator p = primitives_.begin(); p != primitives_.end(); p++) {
-//        if (applyPrimitive(source, *p).get() == dest.get())
-//            return *p;
-//    }
-//    //when reaching this position, no primitive has been found
-//    std::ostringstream ss;
-//    ss<<"No primitive found to go from cell "<<source<<" to cell "<<dest;
-//    throw CarException(ss.str());
-//}
-
-//motion_primitive EnvironmentCar::findPrimitive(int start_id, int dest_id) const{
-//    const ContinuousCellPtr& start = findCell(start_id);
-//    const ContinuousCellPtr& dest = findCell(dest_id);
-//    return findPrimitive(start, dest);
-//}
-
-//ContinuousCellPtr EnvironmentCar::applyPrimitive(const ContinuousCellPtr& start, const motion_primitive& p) const {
-//    CarSimulator sim(car_length_);
-//    sim.setInitialState(start->x(), start->y(), start->th());
-//    sim.setControl(p.v, p.steer);
-//    CarSimulator::state_type new_state = sim.simulate(p.duration, simulation_time_step_);
-
-//    bool is_forward = p.v >= 0;
-//    ContinuousCellPtr c( new ContinuousCell(new_state, is_forward,
-//            map_res_, theta_bins_, fixed_cells_));
-//    return c;
-//}
-
 bool EnvironmentCar::saveSolutionYAML(const std::vector<int>& ids, const char* filename) const {
     std::ofstream fout(filename);
     if (! fout.good()) {
