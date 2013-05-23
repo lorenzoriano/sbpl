@@ -9,6 +9,7 @@
 #include <boost/bimap.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/weak_ptr.hpp>
+#include <boost/unordered_map.hpp>
 
 #include <cmath>
 #include <iostream>
@@ -163,7 +164,9 @@ class ContinuousCell {
 public:
     typedef std::map<int,
                      std::pair<motion_primitive,
-                               boost::weak_ptr<const ContinuousCell> > >
+                               boost::weak_ptr<const ContinuousCell>
+                              >
+                    >
             prims_cells_t;
 
     ContinuousCell(scalar x, scalar y, scalar th,
@@ -248,20 +251,17 @@ public:
         using boost::hash_combine;
         std::size_t seed = 0;
 
-        if (fixed_cells_) {
-            int val = round(x_ / map_res_);
-            hash_combine(seed, val);
-            val = round(y_ / map_res_);
-            hash_combine(seed, val);
-            val = bin_angle(th_, theta_bins_);
-            hash_combine(seed, val);
+        if (fixed_cells_) {            
+            hash_combine(seed, x_);
+            hash_combine(seed, y_);
+            hash_combine(seed, th_);
         }
         else {
-            hash_combine(seed, int(discretize_coordinate(x_, map_res_)/ map_res_));
-            hash_combine(seed, int(discretize_coordinate(y_, map_res_)/ map_res_));
-            hash_combine(seed, bin_angle(th_, theta_bins_));
+            hash_combine(seed, discretize_coordinate(x_, map_res_));
+            hash_combine(seed, discretize_coordinate(y_, map_res_));
+            hash_combine(seed, discretize_angle(th_, theta_bins_));
         }
-        hash_combine(seed, int(is_forward_));
+        hash_combine(seed, is_forward_);
 
         cached_hash_ = seed;
         hash_calculated_ = true;
@@ -274,10 +274,6 @@ public:
         ss<<std::setprecision(2);
         ss<<x_<<" "<<y_<<" "<<th_;
         return ss.str();
-    }
-
-    bool operator==(const ContinuousCell& c) {
-        return hash() == c.hash();
     }
 
     CarSimulator::state_type toCarState() const {
@@ -332,6 +328,14 @@ public:
         }
     }
 
+    bool operator==(const ContinuousCell& other) {
+        return (( is_forward() == other.is_forward()) &&
+                ( fabs(x()  -  other.x()) < map_res_) &&
+                ( fabs(y()  -  other.y()) < map_res_) &&
+                ( fabs(diff_angle(th(), other.th())) < double(theta_bins_)/(2*M_PI))
+               );
+    }
+
 private:
     scalar x_, y_, th_;
     bool is_forward_;
@@ -347,18 +351,39 @@ private:
 
 };
 
-typedef boost::shared_ptr<ContinuousCell> ContinuousCellPtr;
-typedef boost::weak_ptr<const ContinuousCell> ConstContinuousCellWeakPtr;
-typedef boost::weak_ptr<ContinuousCell> ContinuousCellWeakPtr;
-
 std::ostream& operator<<(std::ostream& stream, const ContinuousCell& cell) {
     std::stringstream ss;
     ss.unsetf(std::ios::floatfield);
-    ss<<std::setprecision(2);
+    ss<<std::setprecision(3);
     ss<<cell.x_<<" "<<cell.y_<<" "<<cell.th_<<" "<<-cell.is_forward_;
     stream<<ss.str();
     return stream;
 }
+
+std::size_t hash_value(ContinuousCell const& c) {
+    return c.hash();
+}
+
+
+typedef boost::shared_ptr<ContinuousCell> ContinuousCellPtr;
+typedef boost::weak_ptr<const ContinuousCell> ConstContinuousCellWeakPtr;
+typedef boost::weak_ptr<ContinuousCell> ContinuousCellWeakPtr;
+
+
+bool operator==(ContinuousCellPtr const& p1, ContinuousCellPtr const& p2)
+{
+    std::cout<<"Operator == called!\n";
+    return (*p1.get()) == (*p2.get());
+}
+
+std::size_t hash_value(ContinuousCellPtr const& p) {
+
+    std::cout<<"Hash value called!\n";
+    boost::hash<ContinuousCell> hasher;
+    return hasher(*p.get());
+
+}
+
 
 class EnvironmentCar : public DiscreteSpaceInformation {
 
@@ -519,10 +544,6 @@ public:
         assert(cells_map_.size() == hash_int_map_.size());
         return cells_map_.size();
     }
-
-//    motion_primitive findPrimitive(const ContinuousCellPtr& source, const ContinuousCellPtr& dest) const;
-//    motion_primitive findPrimitive(int start_id, int dest_id) const;
-//    ContinuousCellPtr applyPrimitive(const ContinuousCellPtr& start, const motion_primitive& p) const;
 
     bool saveSolutionYAML(const std::vector<int>& ids, const char* filename) const;
 

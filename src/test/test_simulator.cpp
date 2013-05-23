@@ -35,12 +35,11 @@ int main() {
                            true);
 
     std::cout<<"In cell: "<<in_cell<<std::endl;
-    std::cout<<"In cell hash: "<<in_cell.hash()<<std::endl;
+    std::cout<<"In cell hash: "<<boost::hash<ContinuousCell>()(in_cell)<<std::endl;
     std::cout<<"Out cell: "<<out_cell<<std::endl;
     std::cout<<"Out cell hash: "<<out_cell.hash()<<"\n";
-
-
     std::cout<<"Equal hashes? "<<(in_cell.hash() == out_cell.hash()?"Yes":"No")<<std::endl;
+    std::cout<<"Equal Cells? "<<(in_cell == out_cell?"Yes":"No")<<std::endl;
     out_cell.checkHashCollision(in_cell);
 
 }

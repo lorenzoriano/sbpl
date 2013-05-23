@@ -7,43 +7,67 @@
 #include <set>
 #include <queue>
 
+#include <boost/unordered_map.hpp>
+#include <boost/unordered_set.hpp>
+#include <boost/make_shared.hpp>
+#include <cassert>
+
 int main() {
-    EnvironmentCar env("/home/pezzotto/tmp/sbpl/car_primitives/world.yaml");
-    env.loadPrimitives("/home/pezzotto/tmp/sbpl/car_primitives/primitives.yaml");
 
-    env.setStart(0, 0, 0);
-    float max_dim = 0.4;
-    float max_x = max_dim, min_x = -max_dim;
-    float max_y = max_dim, min_y = -max_dim;
+    float map_resolution = 0.1;
+    int theta_bins = 32;
 
+    ContinuousCellPtr c1 = boost::make_shared<ContinuousCell>( 1.1, -0.6, 0.202683,
+                           true, map_resolution, theta_bins,
+                           false);
+    ContinuousCellPtr c2 = boost::make_shared<ContinuousCell>(1.1, -1.5, 5.87782,
+                           true, map_resolution, theta_bins,
+                           false);
+    ContinuousCellPtr c3 = boost::make_shared<ContinuousCell>(1.1, -1.46, 5.87782,
+                           true, map_resolution, theta_bins,
+                           false);
 
-    std::set<int> visited;
-    std::queue<int> to_visit;
+    boost::unordered_set<ContinuousCellPtr> set;
+    typedef boost::unordered_set<ContinuousCellPtr>::iterator set_iter;
 
-    std::ofstream nodes_file("nodes.txt");
-
-    to_visit.push(0);
-    while (! to_visit.empty()) {
-        int next = to_visit.front();
-        to_visit.pop();
-        const ContinuousCellPtr& start = env.findCell(next);
-        nodes_file<<start->repr()<<"\n";
-        std::vector<int> succs, costs;
-        env.GetSuccs(next, &succs, &costs);
-
-        for (std::vector<int>::iterator i = succs.begin(); i != succs.end(); i++) {
-            int next_id = *i;
-            const ContinuousCellPtr& c = env.findCell(next_id);
-            if ( (c->x()>min_x) && (c->x()<max_x) && (c->y()>min_y) && (c->y()<max_y) ) {
-                std::pair<std::set<int>::iterator,bool> ret = visited.insert(next_id);
-                if (ret.second) //add to elements to visit
-                    to_visit.push(next_id);
-            }
-
+    {
+        std::cout<<"Inserting element "<<*c1.get()<<std::endl;
+        std::pair<set_iter, bool> res = set.insert(c1);
+        if (res.second) {
+            std::cout<<"Insert was successfull"<<std::endl;
         }
-        std::cout<<"Visited: "<<visited.size()<<" to visit: "<<to_visit.size()<<"\n";
-
+        else {
+            std::cout<<"Elements already exist, found: "<<*res.first->get()<<std::endl;
+        }
     }
-    std::cout<<"Environment size: "<<env.numStates()<<"\n";
-    nodes_file.close();
+    std::cout<<std::endl;
+
+    {
+        std::cout<<"Inserting element "<<*c2.get()<<std::endl;
+        std::pair<set_iter, bool> res = set.insert(c2);
+        if (res.second) {
+            std::cout<<"Insert was successfull"<<std::endl;
+        }
+        else {
+            std::cout<<"Elements already exist, found: "<<*res.first->get()<<std::endl;
+        }
+    }
+    std::cout<<std::endl;
+
+    {
+        std::cout<<"Inserting element "<<*c3.get()<<std::endl;
+        std::pair<set_iter, bool> res = set.insert(c3);
+        if (res.second) {
+            std::cout<<"Insert was successfull"<<std::endl;
+        }
+        else {
+            std::cout<<"Elements already exist, found: "<<*res.first->get()<<std::endl;
+        }
+    }
+
+
+
+
+
+
 }
