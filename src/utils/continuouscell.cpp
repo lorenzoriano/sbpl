@@ -134,11 +134,7 @@ const ContinuousCell::prims_cells_t& ContinuousCell::getSuccessors() const {
 
 void ContinuousCell::checkHashCollision(const ContinuousCell& other) {
     if (hash() == other.hash()) {
-        if (( fabs(x()  -  other.x()) > map_res_) ||
-            ( fabs(y()  -  other.y()) > map_res_) ||
-            ( fabs(diff_angle(th(), other.th())) > double(theta_bins_)/(2*M_PI)) ||
-            ( is_forward() != other.is_forward())
-           ) {
+        if (! (*this == other)) {
 
             {
                 this->hash_calculated_ = false;
@@ -161,6 +157,6 @@ bool ContinuousCell::operator==(const ContinuousCell& other) const {
     return (( is_forward() == other.is_forward()) &&
             ( fabs(x()  -  other.x()) < map_res_) &&
             ( fabs(y()  -  other.y()) < map_res_) &&
-            ( fabs(diff_angle(th(), other.th())) < double(theta_bins_)/(2*M_PI))
+            ( fabs(diff_angle(th(), other.th())) < (2*M_PI)/double(theta_bins_))
            );
 }
