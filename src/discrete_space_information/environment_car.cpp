@@ -310,18 +310,26 @@ bool EnvironmentCar::saveSolutionYAML(const std::vector<int>& ids, const char* f
                 doc<<YAML::Value;
                 doc<<YAML::BeginMap;
                 {
-                    doc<<YAML::Key<<"x";
-                    doc<<YAML::Value<<c->x();
-                    doc<<YAML::Key<<"y";
-                    doc<<YAML::Value<<c->y();
-                    doc<<YAML::Key<<"th";
-                    doc<<YAML::Value<<c->th();
-                    doc<<YAML::Key<<"is_forward";
-                    doc<<YAML::Value<<c->is_forward();
-                    doc<<YAML::Key<<"id";
-                    doc<<YAML::Value<<c->id();
-                    doc<<YAML::Key<<"hash";
-                    doc<<YAML::Value<<c->hash();
+
+                    //COORDINATES
+                    doc<<YAML::Key<<"info";
+                    doc<<YAML::Value;
+                    doc<<YAML::BeginMap;
+                    {
+                        doc<<YAML::Key<<"x";
+                        doc<<YAML::Value<<c->x();
+                        doc<<YAML::Key<<"y";
+                        doc<<YAML::Value<<c->y();
+                        doc<<YAML::Key<<"th";
+                        doc<<YAML::Value<<c->th();
+                        doc<<YAML::Key<<"is_forward";
+                        doc<<YAML::Value<<c->is_forward();
+                        doc<<YAML::Key<<"id";
+                        doc<<YAML::Value<<c->id();
+                        doc<<YAML::Key<<"hash";
+                        doc<<YAML::Value<<c->hash();
+                    }
+                    doc<<YAML::EndMap;
 
                     //OUTGOING LINKS
                     doc<<YAML::Key<<"out_links";
