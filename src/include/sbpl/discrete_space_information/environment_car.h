@@ -7,10 +7,9 @@
 #include <sbpl/utils/continuouscell.h>
 #include <sbpl/utils/car_motion_primitive.h>
 
-#include <boost/functional/hash.hpp>
-#include <boost/bimap.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/weak_ptr.hpp>
+#include <boost/unordered_set.hpp>
 #include <boost/unordered_map.hpp>
 
 #include <cmath>
@@ -197,25 +196,22 @@ public:
     ContinuousCellPtr findCell(int state_id) const;
 
     int numStates() const {
-        assert(cells_map_.size() == hash_int_map_.size());
-        return cells_map_.size();
+        assert(cells_.size() == idCellsMap_.size());
+        return cells_.size();
     }
 
     bool saveSolutionYAML(const std::vector<int>& ids, const char* filename) const;
 
 protected:
 
-    int addHashMapping(std::size_t hash_entry);
-    ContinuousCellPtr addIfRequired(ContinuousCellPtr c);
-
+    int addHashMapping(ContinuousCellPtr c);
+    ContinuousCellPtr addCell(ContinuousCellPtr c);
 
     std::vector<motion_primitive> primitives_;
     scalar simulation_time_step_;
-    std::map<std::size_t, ContinuousCellPtr> cells_map_;
 
-    typedef boost::bimap<int, std::size_t> hash_int_map_t;
-    hash_int_map_t hash_int_map_;
-
+    boost::unordered_set<ContinuousCellPtr> cells_;
+    boost::unordered_map<int, ContinuousCellPtr> idCellsMap_;
 
     scalar car_length_;
     scalar map_res_;

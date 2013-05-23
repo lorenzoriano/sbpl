@@ -192,13 +192,11 @@ typedef boost::weak_ptr<ContinuousCell> ContinuousCellWeakPtr;
 
 inline bool operator==(ContinuousCellPtr const& p1, ContinuousCellPtr const& p2)
 {
-    std::cout<<"Operator == called!\n";
     return (*p1.get()) == (*p2.get());
 }
 
 inline std::size_t hash_value(ContinuousCellPtr const& p) {
 
-    std::cout<<"Hash value called!\n";
     boost::hash<ContinuousCell> hasher;
     return hasher(*p.get());
 

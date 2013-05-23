@@ -74,7 +74,7 @@ void EnvironmentCar::setGoal(scalar x, scalar y, scalar th) {
     //add the new state if it doesn't exist
     goal_id_ = c_hash;
     SBPL_DEBUG("Setting goal %s with hash %zu\n", c->repr().c_str(), c_hash);
-    goal_cell_ = addIfRequired(c);
+    goal_cell_ = addCell(c);
 }
 
 void EnvironmentCar::setStart(scalar x, scalar y, scalar th) {
@@ -87,7 +87,7 @@ void EnvironmentCar::setStart(scalar x, scalar y, scalar th) {
     //add the new state if it doesn't exist
     start_id_ = c_hash;
     SBPL_DEBUG("Setting start %s with hash %zu\n", c->repr().c_str(), c_hash);
-    start_cell_ = addIfRequired(c);
+    start_cell_ = addCell(c);
 }
 
 bool EnvironmentCar::isValidCell(const ContinuousCellPtr &c) {
@@ -130,50 +130,66 @@ int EnvironmentCar::GetStartHeuristic(int stateID) {
     return 0;
 }
 
+int EnvironmentCar::addHashMapping(ContinuousCellPtr c) {
+
+    //get the next entry
+    int new_id = idCellsMap_.size();
+
+    if (! idCellsMap_.insert(std::make_pair(new_id, c)).second) {
+        std::ostringstream ss;
+        ss<<"Inserting a cell: id "<<new_id<<" already exist!";
+        throw (std::logic_error(ss.str()));
+    }
+
+    //insert and initialize the mappings
+    //still obscure code from original SBPL
+    int* entry = new int[NUMOFINDICES_STATEID2IND];
+    StateID2IndexMapping.push_back(entry);
+    for (unsigned int i = 0; i < NUMOFINDICES_STATEID2IND; i++) {
+        StateID2IndexMapping[new_id][i] = -1;
+    }
+
+    if (new_id != (int)StateID2IndexMapping.size() - 1) {
+        SBPL_ERROR("ERROR in Env... function: last state has incorrect stateID\n");
+        throw new SBPL_Exception();
+    }
+
+    return new_id;
+}
+
+ContinuousCellPtr EnvironmentCar::addCell(ContinuousCellPtr c) {
+
+    std::pair<boost::unordered_set<ContinuousCellPtr>::iterator, bool> res = cells_.insert(c);
+    ContinuousCellPtr newcell = *res.first;
+
+    //SLOW DEBUG MODE
+    if (! res.second) { //cell already exist in the set
+        newcell->checkHashCollision(*c.get());
+        return newcell;
+    }
+
+    int new_id = addHashMapping(newcell);
+    c->setId(new_id);
+    return newcell;
+
+}
+
 ContinuousCellPtr EnvironmentCar::findCell(int state_id) const {
     //get hash
-    hash_int_map_t::left_map::const_iterator hash_i = hash_int_map_.left.find(state_id);
-    if (hash_i == hash_int_map_.left.end()) {
+    boost::unordered_map<int, ContinuousCellPtr>::const_iterator i;
+
+    i = idCellsMap_.find(state_id);
+
+    if (i == idCellsMap_.end()) {
         std::ostringstream ss;
         ss<<"Error: the state with id "<<state_id<<" does not exist!";
-        throw(SBPL_Exception());
+        throw(std::logic_error(ss.str()));
     }
 
     //get cell
-    std::map<std::size_t, ContinuousCellPtr>::const_iterator i = cells_map_.find(hash_i->second);
-    if (i == cells_map_.end()) {
-        std::ostringstream ss;
-        ss<<"Error: the state with hash id "<<hash_i->first<<" does not exist!";
-        throw(CarException(ss.str()));
-    }
-    SBPL_DEBUG("State id %d has been found with hash %zu\n", state_id, i->second.hash());
     return i->second;
 }
 
-ContinuousCellPtr EnvironmentCar::addIfRequired(ContinuousCellPtr c) {
-    std::size_t hash = c->hash();
-    //get starting state
-    hash_int_map_t::right_map::iterator i = hash_int_map_.right.find(hash);
-    if (i != hash_int_map_.right.end()) {//element already exist
-        SBPL_DEBUG("Cell with hash %zu already exists with id %d, not adding\n", hash, i->second);
-
-        //THIS IS SLOW AND HAS TO BE FIXED!!
-        cells_map_[hash]->checkHashCollision(*c.get());
-
-        return cells_map_[hash];
-    }
-
-    //a new entry needs to be added
-    if (!cells_map_.insert(std::make_pair(hash, c)).second) {
-        //this should never have happened
-        SBPL_ERROR("The hash value %zu is already in the map!\n", hash);
-        throw(SBPL_Exception());
-    }
-
-    int new_id = addHashMapping(hash);
-    c->setId(new_id);
-    return c;
-}
 
 void EnvironmentCar::GetSuccs(int SourceStateID, std::vector<int>* SuccIDV, std::vector<int>* CostV) {
 
@@ -205,7 +221,7 @@ void EnvironmentCar::GetSuccs(int SourceStateID, std::vector<int>* SuccIDV, std:
             continue;
 
         //add the new state if it doesn't exist
-        c = addIfRequired(c);
+        c = addCell(c);
 
         //add the successor state
         SuccIDV->push_back(c->id());
@@ -267,33 +283,6 @@ bool EnvironmentCar::loadPrimitives(const char* filename) {
         primitives_.push_back(p);
     }
 
-}
-
-int EnvironmentCar::addHashMapping(std::size_t hash_entry) {
-
-    //get the next entry
-    int new_id = hash_int_map_.size();
-    SBPL_DEBUG("Cell with hash id %zu will have int id %d\n", hash_entry, new_id);
-    hash_int_map_.insert(hash_int_map_t::value_type(new_id, hash_entry));
-
-    //insert and initialize the mappings
-    //still obscure code from original SBPL
-    int* entry = new int[NUMOFINDICES_STATEID2IND];
-    StateID2IndexMapping.push_back(entry);
-    for (unsigned int i = 0; i < NUMOFINDICES_STATEID2IND; i++) {
-        StateID2IndexMapping[new_id][i] = -1;
-    }
-
-    if (new_id != (int)StateID2IndexMapping.size() - 1) {
-        SBPL_ERROR("ERROR in Env... function: last state has incorrect stateID\n");
-        throw new SBPL_Exception();
-    }
-
-    SBPL_DEBUG("After addHashMapping the map has entries:\n");
-    print_map(hash_int_map_.left);
-//    std::cout<<std::endl;
-
-    return new_id;
 }
 
 bool EnvironmentCar::saveSolutionYAML(const std::vector<int>& ids, const char* filename) const {
