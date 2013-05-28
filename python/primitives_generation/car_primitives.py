@@ -1,6 +1,8 @@
 import yaml
 import carode
 import numpy as np
+from scipy.cluster.vq import kmeans2
+import copy
 from matplotlib import pylab
 
 def cont2disc(x, numofbins, max_v, min_v):
@@ -33,8 +35,11 @@ class CarPrimitives:
     def __init__(self, cfgfile, show_plots = False):
         f = open(cfgfile, "r")
         cfg = yaml.load(f)
+        self.cfg = cfg
         f.close()
 
+        self.max_steering_angle = cfg["max_steering_angle"]
+        self.min_steering_angle = cfg["min_steering_angle"]
         self.car = carode.Car(cfg["car_length"],
                               cfg["max_v"],
                               cfg["min_v"],
@@ -49,6 +54,7 @@ class CarPrimitives:
         self.show_plots = show_plots
         self.primitives = None
         self.failed_cells = None
+        self.succeded_cells = None
         self.lattice = None
         self.continous_points = None
         self.primitives_costs = None
@@ -60,7 +66,7 @@ class CarPrimitives:
         (linear and angular).
 
         Parameters:
-        multiple_thetas: if True multiple orientations will be considered
+        multiple_thetas: if True multiple starting orientations will be considered
         only_endpoints: if True only the final position of a trajectory is considered
         """
 
@@ -120,19 +126,26 @@ class CarPrimitives:
         self.lattice  = points
         return points
 
+    def __test_cell_control(self, end_point, destination, control):
+        theta_bin_size = 2.*np.pi / self.theta_bins
+        return ((abs(end_point[0] - destination[0]) < self.map_resolution) and
+                (abs(end_point[1] - destination[1]) < self.map_resolution) and
+                (abs(carode.diff_angle(end_point[2], destination[2])) < theta_bin_size)
+                ) and (self.min_steering_angle < control[1] < self.max_steering_angle)
+
+
     def create_primitives(self):
         """Creates a set of primitives. The map is first discretized to a lattice,
         then for each cell a primitive is calculated. Depending on the
         discretization, many cells might fail to have resulting primitive.
 
-        Returns the primitives and the failed cells
+        Returns the primitives
         """
 
         print_steps = 20
         successes = 0
         tot_attempts = 0
-        time_bounds = [self.min_duration, self.max_duration]
-        theta_bin_size = 2.*np.pi / self.theta_bins
+        max_time = self.max_duration
         primitives = []
         failed_destinations = []
         succeded_destinations = []
@@ -141,14 +154,20 @@ class CarPrimitives:
                                                 only_endpoints=True)
         cells = self.lattice_from_points(continous_points)
 
+        #we need a wide turn car to allow the optimizer to find controls outside
+        #the steering range, so to discard these controls
+        wide_turn_car = copy.deepcopy(self.car)
+        wide_turn_car.max_steer = np.deg2rad(80)
+        wide_turn_car.min_steer = np.deg2rad(-80)
+
         for cell in cells:
             tot_attempts += 1
             try:
-                control, _, imode = self.car.find_primitive_slsqp(cell, time_bounds)
+                control, _, imode = wide_turn_car.find_primitive_slsqp_euler_vt(cell, max_time,
+                                                                                5)
             except ValueError:
                 print "======================"
                 print "Error while trying to reach ", cell
-                print "Time bounds: ", time_bounds
                 print "======================"
                 failed_destinations.append(cell)
                 continue
@@ -157,12 +176,9 @@ class CarPrimitives:
                 continue
 
             #checking the error now
-            self.car.set_control(control[0], control[1])
-            traj = self.car.simulate(control[2])[-1,:]
-            if ((abs(traj[0] - cell[0]) < self.map_resolution/2.) and
-                (abs(traj[1] - cell[1]) < self.map_resolution/2.) and
-                (abs(carode.diff_angle(traj[2], cell[2])) < theta_bin_size/2.)
-                ):
+            wide_turn_car.set_control(control[0], control[1])
+            traj = wide_turn_car.simulate(control[2])[-1,:]
+            if self.__test_cell_control(traj, cell, control):
                 primitives.append(control)
                 successes += 1
                 succeded_destinations.append(cell)
@@ -176,6 +192,7 @@ class CarPrimitives:
 
         self.primitives = np.array(primitives)
         self.failed_cells = np.array(failed_destinations)
+        self.succeded_cells = np.array(succeded_destinations)
 
         if self.show_plots:
             succeded_destinations = np.array(succeded_destinations)
@@ -186,8 +203,10 @@ class CarPrimitives:
 
             #discrete points, with red failures
             pylab.figure()
+
             pylab.plot(succeded_destinations[:,0], succeded_destinations[:,1], '.')
-            pylab.plot(self.failed_cells[:,0], self.failed_cells[:,1], 'rx')
+            if self.failed_cells.size > 0:
+                pylab.plot(self.failed_cells[:,0], self.failed_cells[:,1], 'rx')
 
             #now showing the trajectories
             trajectories = self.execute_primitives(self.primitives)
@@ -197,7 +216,7 @@ class CarPrimitives:
             pylab.title("Reachable points (lattice). # primitives: %d" % (len(self.primitives)))
             pylab.show()
 
-        return self.primitives, self.failed_cells
+        return self.primitives
 
     def execute_primitives(self, primitives):
         """Executes each of the primitives and return a list of all the trajectories."""
@@ -223,7 +242,8 @@ class CarPrimitives:
         #finding the classes
         angles = primitives[:,1]
         bins = np.linspace(angles.min(), angles.max(), number_of_clusters)
-        classes = np.digitize(angles, bins)
+        #classes = np.digitize(angles, bins)
+        _, classes = kmeans2(angles, bins, minit='matrix')
 
         #selecting candidates among classes
         for c in range(number_of_clusters+1):
@@ -358,7 +378,8 @@ class CarPrimitives:
             self.car.front_y = start[1]
             self.car.th = start[2]
 
-            (control, err, _) = self.car.find_primitive_slsqp_euler(waypoint, time_bounds)
+            #(control, err, _) = self.car.find_primitive_slsqp_euler(waypoint, time_bounds)
+            (control, _, _) = self.car.find_primitive_slsqp_euler_vt(waypoint, self.max_duration)
             self.car.set_control(control[0], control[1])
             dt = control[2] / intermediate_steps
             interp_steps = self.car.simulate(control[2], dt)
@@ -379,10 +400,9 @@ class CarPrimitives:
 
 
 if __name__ == "__main__":
-    import cPickle
-    prims = cPickle.load(open("/home/pezzotto/prims.txt"))
-    cells = np.loadtxt("/home/pezzotto/tmp/sbpl/build/cells.txt")
-    traj = prims.interpolate_waypoints(cells, 1)
-    #pylab.figure()
-    #pylab.plot(traj[:,0], traj[:,1], 'b-o')
-    #pylab.plot(cells[:,0], cells[:,1], "rx", ms=20.0);
+    prims = CarPrimitives("/home/pezzotto/tmp/sbpl/car_primitives/world.yaml",
+                          True)
+    prims.run(10, 4,
+             "/home/pezzotto/tmp/sbpl/car_primitives/primitives.yaml",
+             3)
+    pylab.show()

@@ -6,7 +6,7 @@ def test_planned_cells(cells):
     max_w = 0.5236
 
     #put a fictionary short of pi/2 limit here
-    car = carode.Car(0.95, 1.0, -0.3,
+    car = carode.Car(0.95, 1.0, -0.5,
                      np.deg2rad(80), np.deg2rad(-80))
     car.front_x = cells[0, 0]
     car.front_y = cells[0, 1]
@@ -14,8 +14,10 @@ def test_planned_cells(cells):
 
     for dest in cells[1:,:]:
         x, y, th = car.front_x, car.front_y, car.th
-        print "Going from (%.2f, %.2f, %.2f)" % (x, y, th), " to ", dest
-        (v, w, t), _, _ = car.find_primitive_slsqp(dest, [0.1,1])
+        print "Going from (%.2f, %.2f, %.2f)" % (x, y, th),
+        print " to [%d] (%.2f, %.2f, %.2f)" % (dest[4], dest[0], dest[1], dest[2])
+        #(v, w, t), _, _ = car.find_primitive_slsqp_euler(dest, [0.1,1])
+        (v, w, t), _, _ = car.find_primitive_slsqp_euler_vt(dest, 1.0)
         print "Control is: (%.2f, %.2f, %.2f)" % (v, w, t)
         if abs(w) > max_w:
             print "WARNING: required steering at ", w, " max is ", max_w

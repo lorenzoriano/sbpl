@@ -4,6 +4,7 @@ from scipy import optimize
 import angles
 from math import sin, cos, tan, pi, fabs
 from numpy import sign
+import itertools
 
 def diff_angle(a1, a2):
     return ((a1-a2) + pi) % (2*pi) - pi
@@ -252,6 +253,89 @@ class Car(object):
 
         control, err, _, imode, _ = best_ret
         return (control, err, imode)
+
+    def find_primitive_slsqp_euler_vt(self, end_pos, max_time,
+                                 num_attempts = 10):
+        """Similar to find_primitive_slsqp, but the gradient is provided rather
+        than approximated. It is faster than find_primitive_slsqp, but it might
+        not have the correct solution as the gradient is approximated using a
+        first order Euler approximation.
+
+        See find_primitive_slsqp for the parameters and return values.
+        """
+
+        #bounds
+        vt_bounds = (self.min_vel * max_time, self.max_vel * max_time)
+        steer_bounds = (self.min_steer, self.max_steer)
+
+        bounds = [vt_bounds, steer_bounds]
+
+        #convert end_pos to rear_axle representation
+        end_pos = np.array([end_pos[0] - self.length * cos(self.th),
+                            end_pos[1] - self.length * sin(self.th),
+                            end_pos[2]
+                            ])
+
+        rear_x = self.front_x - self.length * cos(self.th)
+        rear_y = self.front_y - self.length * sin(self.th)
+
+        def position_error(control):
+            vt, w = control
+
+            thp = self.th + vt / self.length * tan(w)
+            xp = rear_x + vt * cos(thp)
+            yp = rear_y + vt * sin(thp)
+
+            err_x = (end_pos[0] -xp)
+            err_y = (end_pos[1] - yp)
+            err_th = diff_angle(end_pos[2], thp) #special angles treatment
+
+            err = err_x**2 + err_y**2 + err_th**2
+            return err
+
+        goal_x = end_pos[0]
+        goal_y = end_pos[1]
+        goal_th = end_pos[2]
+        x0 = rear_x
+        y0 = rear_y
+        th0 = self.th
+        l = self.length
+        Abs = fabs
+        def fprime(control):
+            #magic coming from simpy
+            vt, w, = control
+            dvt = -2*(goal_x - vt*cos(th0) - x0)*cos(th0) - 2*(goal_y - vt*sin(th0) - y0)*sin(th0) - 2*(-Abs(-Abs(goal_th - th0 - vt*tan(w)/l) + pi) + pi)*tan(w)*sign(-Abs(goal_th - th0 - vt*tan(w)/l) + pi)*sign(goal_th - th0 - vt*tan(w)/l)/l
+            dw = -2*vt*(tan(w)**2 + 1)*(-Abs(-Abs(goal_th - th0 - vt*tan(w)/l) + pi) + pi)*sign(-Abs(goal_th - th0 - vt*tan(w)/l) + pi)*sign(goal_th - th0 - vt*tan(w)/l)/l
+
+            return [dvt, dw]
+
+        inits = itertools.product(np.linspace(vt_bounds[0], vt_bounds[1], num_attempts),
+                                  np.linspace(steer_bounds[0], steer_bounds[1], num_attempts)
+                                  )
+
+        best_ret = [0, np.inf, 0, 0]
+        for initial_control in inits:
+            ret = optimize.fmin_slsqp(position_error,
+                                      initial_control,
+                                      bounds=bounds,
+                                      fprime=fprime,
+                                      iter = 1000,
+                                      full_output=True,
+                                      iprint=0
+                                      )
+            if ret[1] < best_ret[1]:
+                best_ret = ret
+
+        control, err, _, imode, _ = best_ret
+        vt, w = control
+        if vt > 0: #assume min_vel is negative
+            v = self.max_vel
+            t = vt / v
+        else:
+            v = self.min_vel
+            t = vt / v
+
+        return ((v,w,t), err, imode)
 
 if __name__ == "__main__":
     max_vel = 1.0
