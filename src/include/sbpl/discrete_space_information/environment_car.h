@@ -49,9 +49,10 @@ public:
                    scalar max_v,
                    scalar min_v,
                    scalar max_steer,
-                   scalar min_steer);
+                   scalar min_steer,
+                   bool store_graph);
 
-    EnvironmentCar(const char *cfg_file);
+    EnvironmentCar(const char *cfg_file, bool store_graph);
 
     void setGoal(scalar x, scalar y, scalar th);
     void setStart(scalar x, scalar y, scalar th);
@@ -221,6 +222,7 @@ protected:
     scalar  max_steer_;
     scalar  min_steer_;
     bool fixed_cells_;
+    bool store_graph_;
 
     std::size_t start_id_;
     std::size_t goal_id_;

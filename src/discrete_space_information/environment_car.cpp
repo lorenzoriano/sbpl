@@ -25,7 +25,7 @@ EnvironmentCar::EnvironmentCar(scalar map_res,
                                scalar max_v,
                                scalar min_v,
                                scalar max_steer,
-                               scalar min_steer) {
+                               scalar min_steer, bool store_graph) {
 
     map_res_ = map_res;
     theta_bins_ = theta_bins;
@@ -35,10 +35,12 @@ EnvironmentCar::EnvironmentCar(scalar map_res,
     min_steer_ = min_steer;
     max_steer_ = max_steer;
     fixed_cells_ = fixed_cells;
+    store_graph_ = store_graph;
 }
 
-EnvironmentCar::EnvironmentCar(const char* cfg_file) {
+EnvironmentCar::EnvironmentCar(const char* cfg_file, bool store_graph) {
     InitializeEnv(cfg_file);
+    store_graph_ = store_graph;
 }
 
 bool EnvironmentCar::InitializeEnv(const char* sEnvFile) {
@@ -227,9 +229,11 @@ void EnvironmentCar::GetSuccs(int SourceStateID, std::vector<int>* SuccIDV, std:
         SuccIDV->push_back(c->id());
         CostV->push_back((*p).cost);
 
-        //creating the links in the cells
-        start->addSuccessor(*p, c);
-        c->addPredecessor(*p, start);
+        if (store_graph_) {
+            //creating the links in the cells
+            start->addSuccessor(*p, c);
+            c->addPredecessor(*p, start);
+        }
 
     }
     SBPL_DEBUG("Finished finding the successors\n\n");
@@ -286,6 +290,11 @@ bool EnvironmentCar::loadPrimitives(const char* filename) {
 }
 
 bool EnvironmentCar::saveSolutionYAML(const std::vector<int>& ids, const char* filename) const {
+
+    if (! store_graph_) {
+        throw (std::logic_error("No graph was asked to save!"));
+    }
+
     std::ofstream fout(filename);
     if (! fout.good()) {
         std::string msg = "Error while opening the file ";

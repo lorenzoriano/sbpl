@@ -12,13 +12,13 @@
 
 int main() {
 
-    EnvironmentCar env("/home/pezzotto/tmp/sbpl/car_primitives/world.yaml");
-    env.loadPrimitives("/home/pezzotto/tmp/sbpl/car_primitives/primitives.yaml");
-
     float end_x = 0.0;
-    float end_y = 0;
-    float end_th = M_PI;
+    float end_y = 1.00;
+    float end_th = 0;
+    bool store_graph = false;
 
+    EnvironmentCar env("/home/pezzotto/tmp/sbpl/car_primitives/world.yaml", store_graph);
+    env.loadPrimitives("/home/pezzotto/tmp/sbpl/car_primitives/primitives.yaml");
     env.setGoal(end_x, end_y, end_th);
     env.setStart(0, 0, 0);
 
@@ -60,12 +60,12 @@ int main() {
     std::ofstream f("/home/pezzotto/cells.txt");
     for (std::vector<int>::iterator i = solution_stateIDs_V.begin(); i != solution_stateIDs_V.end(); i++) {
         const ContinuousCellPtr& c = env.findCell(*i);
-//        f<<c.x()<<" "<<c.y()<<" "<<c.th()<<" "<<c.is_forward()<<std::endl;
         f<<*(c.get())<<" "<<c->id()<<std::endl;
     }
     f.close();
 
     //writing the yaml graph
-    env.saveSolutionYAML(solution_stateIDs_V, "/home/pezzotto/graph.yaml");
+    if (store_graph)
+        env.saveSolutionYAML(solution_stateIDs_V, "/home/pezzotto/graph.yaml");
 
 }

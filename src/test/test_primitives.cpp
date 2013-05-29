@@ -7,7 +7,7 @@
 
 int main() {
 
-    EnvironmentCar env("/home/pezzotto/tmp/sbpl/car_primitives/world.yaml");
+    EnvironmentCar env("/home/pezzotto/tmp/sbpl/car_primitives/world.yaml", true);
     env.loadPrimitives("/home/pezzotto/tmp/sbpl/car_primitives/primitives.yaml");
 
     env.setStart(0, 0, 0);

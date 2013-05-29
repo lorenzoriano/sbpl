@@ -12,15 +12,15 @@ int main() {
     bool fixed_cells = false;
 
 
-    ContinuousCell in_cell( 0.328770309686661, -0.0465757064521313, -2.73760437965393,
+    ContinuousCell in_cell( 0, 0, 0,
                            true, map_resolution, theta_bins,
                            fixed_cells);
-    ContinuousCell out_cell(0.351542264223099, 0.0283525269478559, -2.8418550491333,
-                           false, map_resolution, theta_bins,
+    ContinuousCell out_cell(0.2, 0, 6.08050191017379,
+                           true, map_resolution, theta_bins,
                            fixed_cells);
-    double v = -0.5;
-    double w = 0.0;
-    double t = 0.2;
+    double v = 1.0;
+    double w = -0.5;
+    double t = 0.234;
 
 
     std::cout<<"In cell: "<<in_cell<<std::endl;
@@ -33,7 +33,7 @@ int main() {
     CarSimulator car(0.95);
     car.setInitialState(in_cell.toCarState());
     car.setControl(v, w);
-    ContinuousCell sim_dest(car.simulate(t,1.0), false, map_resolution, theta_bins,
+    ContinuousCell sim_dest(car.simulate(t,1.0), out_cell.is_forward(), map_resolution, theta_bins,
                             fixed_cells);
 
     std::cout<<"Sim cell: "<<sim_dest<<std::endl;
