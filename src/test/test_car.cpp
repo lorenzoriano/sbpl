@@ -13,8 +13,8 @@
 int main() {
 
     float end_x = 0.0;
-    float end_y = 1.00;
-    float end_th = 0;
+    float end_y = 0.00;
+    float end_th = M_PI;
     bool store_graph = false;
 
     EnvironmentCar env("/home/pezzotto/tmp/sbpl/car_primitives/world.yaml", store_graph);

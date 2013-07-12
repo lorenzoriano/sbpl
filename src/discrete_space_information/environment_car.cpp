@@ -206,16 +206,16 @@ void EnvironmentCar::GetSuccs(int SourceStateID, std::vector<int>* SuccIDV, std:
 
     //now loop over all the primitives
     for (std::vector<motion_primitive>::iterator p = primitives_.begin(); p != primitives_.end(); p++) {
-        scalar new_v = (*p).v;
-        scalar new_steer = (*p).steer;
+        scalar new_v = p->v;
+        scalar new_steer = p->steer;
         sim.setControl(new_v, new_steer);
-        CarSimulator::state_type new_state = sim.simulate((*p).duration, simulation_time_step_);
+        CarSimulator::state_type new_state = sim.simulate(p->duration, simulation_time_step_);
 
         bool is_forward = new_v >= 0;
         ContinuousCellPtr c = boost::make_shared<ContinuousCell>(new_state, is_forward,
                 map_res_, theta_bins_, fixed_cells_);
 
-        SBPL_DEBUG("Motion primitive: dv: %f, dth: %fm cost: %d\n", (*p).v, (*p).steer, (*p).cost);
+        SBPL_DEBUG("Motion primitive: dv: %f, dth: %fm cost: %d\n", p->v, p->steer, p->cost);
         SBPL_DEBUG("Successor cell %s\n", c.repr().c_str());
 
         //check if cell is reachable
@@ -227,7 +227,13 @@ void EnvironmentCar::GetSuccs(int SourceStateID, std::vector<int>* SuccIDV, std:
 
         //add the successor state
         SuccIDV->push_back(c->id());
-        CostV->push_back((*p).cost);
+
+        //tweaking cost
+        int cost = p->cost;
+        //if flipping the direction, increase the cost
+        if (start->is_forward() != is_forward)
+            cost *= 2;
+        CostV->push_back(cost);
 
         if (store_graph_) {
             //creating the links in the cells
