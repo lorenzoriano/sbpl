@@ -25,7 +25,9 @@ EnvironmentCar::EnvironmentCar(scalar map_res,
                                scalar max_v,
                                scalar min_v,
                                scalar max_steer,
-                               scalar min_steer, bool store_graph) {
+                               scalar min_steer,
+                               bool store_graph,
+                               scalar flipping_cost) {
 
     map_res_ = map_res;
     theta_bins_ = theta_bins;
@@ -36,6 +38,7 @@ EnvironmentCar::EnvironmentCar(scalar map_res,
     max_steer_ = max_steer;
     fixed_cells_ = fixed_cells;
     store_graph_ = store_graph;
+    flipping_cost_ = flipping_cost;
 }
 
 EnvironmentCar::EnvironmentCar(const char* cfg_file, bool store_graph) {
@@ -55,6 +58,7 @@ bool EnvironmentCar::InitializeEnv(const char* sEnvFile) {
     YAML::Node doc;
     parser.GetNextDocument(doc);
 
+    //never mind efficiency here
     doc["map_resolution"] >> map_res_;
     doc["car_length"] >> car_length_;
     doc["theta_bins"] >> theta_bins_;
@@ -63,6 +67,12 @@ bool EnvironmentCar::InitializeEnv(const char* sEnvFile) {
     doc["max_steering_angle"] >> max_steer_;
     doc["min_steering_angle"] >> min_steer_;
     doc["fixed_cells"] >> fixed_cells_;
+    //reading optional flipping value
+    if (doc.FindValue("flipping_cost")) {
+        doc["flipping_cost"] >> flipping_cost_;
+    }
+    else
+        flipping_cost_ = 1.0;
 }
 
 void EnvironmentCar::setGoal(scalar x, scalar y, scalar th) {
@@ -92,7 +102,10 @@ void EnvironmentCar::setStart(scalar x, scalar y, scalar th) {
     start_cell_ = addCell(c);
 }
 
-bool EnvironmentCar::isValidCell(const ContinuousCellPtr &c) {
+bool EnvironmentCar::isReachableCells(const ContinuousCellPtr &start,
+                                      const ContinuousCellPtr &dest,
+                                      double initial_steering,
+                                      double duration) const {
 
     return true;
 }
@@ -201,15 +214,18 @@ void EnvironmentCar::GetSuccs(int SourceStateID, std::vector<int>* SuccIDV, std:
     SuccIDV->reserve(primitives_.size());
     CostV->reserve(primitives_.size());
 
-    CarSimulator sim(car_length_);
-    sim.setInitialState(start->x(), start->y(), start->th());
 
     //now loop over all the primitives
     for (std::vector<motion_primitive>::iterator p = primitives_.begin(); p != primitives_.end(); p++) {
         scalar new_v = p->v;
         scalar new_steer = p->steer;
-        sim.setControl(new_v, new_steer);
-        CarSimulator::state_type new_state = sim.simulate(p->duration, simulation_time_step_);
+
+        //THIS CAN BE INSTANTIATED ONCE!!!
+        CarSimulator<scalar> sim(car_length_, new_steer, new_v, this->min_steer_, this->max_steer_);
+        sim.setInitialState(start->x(), start->y(), start->th());
+//        sim.setControl(new_v, new_steer);
+
+        CarSimulator<scalar>::state_type new_state = sim.simulate(p->duration, simulation_time_step_);
 
         bool is_forward = new_v >= 0;
         ContinuousCellPtr c = boost::make_shared<ContinuousCell>(new_state, is_forward,
@@ -218,12 +234,20 @@ void EnvironmentCar::GetSuccs(int SourceStateID, std::vector<int>* SuccIDV, std:
         SBPL_DEBUG("Motion primitive: dv: %f, dth: %fm cost: %d\n", p->v, p->steer, p->cost);
         SBPL_DEBUG("Successor cell %s\n", c.repr().c_str());
 
-        //check if cell is reachable
-        if (!isValidCell(c))
-            continue;
+        //special case, this is the goal cell, fix the motion direction
+        ContinuousCellPtr gc(goal_cell_.lock());
+        if (gc && (c->equalButForward(*gc))) {
+            c = goal_cell_.lock();
+            c->set_isForward(new_v >= 0);
+        }
+        else{
+            //add the new state if it doesn't exist
+            c = addCell(c);
+        }
 
-        //add the new state if it doesn't exist
-        c = addCell(c);
+        //check if cell is reachable AFTER discretization
+        if (!isReachableCells(start, c, p->steer, p->duration))
+            continue;
 
         //add the successor state
         SuccIDV->push_back(c->id());
@@ -232,7 +256,7 @@ void EnvironmentCar::GetSuccs(int SourceStateID, std::vector<int>* SuccIDV, std:
         int cost = p->cost;
         //if flipping the direction, increase the cost
         if (start->is_forward() != is_forward)
-            cost *= 2;
+            cost *= flipping_cost_;
         CostV->push_back(cost);
 
         if (store_graph_) {

@@ -12,15 +12,24 @@
 
 int main() {
 
-    float end_x = 0.0;
-    float end_y = 0.00;
-    float end_th = M_PI;
-    bool store_graph = false;
+//    float end_x = 2.839422;
+//    float end_y = 0.925317;
+//    float end_th = 0.072350;
 
-    EnvironmentCar env("/home/pezzotto/tmp/sbpl/car_primitives/world.yaml", store_graph);
-    env.loadPrimitives("/home/pezzotto/tmp/sbpl/car_primitives/primitives.yaml");
+    float start_x = 0;
+    float start_y = 0;
+    float start_th = 0;
+
+    float end_x = 2.857117+0.9;
+    float end_y = 2.2112;
+    float end_th = -0.029857;
+
+    bool store_graph = true;
+
+    EnvironmentCar env("/home/pezzotto/monpal/catkin_ws/src/sbpl_car_planner/sbpl/car_primitives/world.yaml", store_graph);
+    env.loadPrimitives("/home/pezzotto/monpal/catkin_ws/src/sbpl_car_planner/sbpl/car_primitives/primitives.yaml");
     env.setGoal(end_x, end_y, end_th);
-    env.setStart(0, 0, 0);
+    env.setStart(start_x, start_y, start_th);
 
     MDPConfig mdpCfg;
     env.InitializeMDPCfg(&mdpCfg);
@@ -37,8 +46,8 @@ int main() {
         throw new SBPL_Exception();
     }
 
-    double allocated_time_secs = 200.; // in seconds
-    double initialEpsilon = 5.0;
+    double allocated_time_secs = 10.; // in seconds
+    double initialEpsilon = 3.0;
     bool bsearchuntilfirstsolution = false;
     planner->set_initialsolution_eps(initialEpsilon);
     planner->set_search_mode(bsearchuntilfirstsolution);
@@ -47,8 +56,18 @@ int main() {
 
     // plan
     boost::progress_timer __timer;
-    int bRet = planner->replan(allocated_time_secs, &solution_stateIDs_V);
+    int solution_cost = 0;
+    int bRet = planner->replan(allocated_time_secs, &solution_stateIDs_V, &solution_cost);
+
+    {
+        std::cout<<"First run, number of cells: "<<env.numStates()<<"\n";
+        boost::progress_timer __timer;
+        bRet = planner->replan(allocated_time_secs, &solution_stateIDs_V, &solution_cost);
+        std::cout<<"Second run, number of cells: "<<env.numStates()<<"\n";
+    }
+
     std::cout<<env.numStates()<<" cells expanded"<<std::endl;
+    std::cout<<"Cost of the solution: "<<solution_cost<<std::endl;
     if (! bRet) {
         std::cerr<<"NO SOLUTON FOUND!\n";        
         return 1;

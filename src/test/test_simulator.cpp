@@ -30,9 +30,8 @@ int main() {
 //    std::cout<<"Equal hashes? "<<(in_cell.hash() == out_cell.hash()?"Yes":"No")<<std::endl;
 //    std::cout<<"Equal Cells? "<<(in_cell == out_cell?"Yes":"No")<<std::endl;
 
-    CarSimulator car(0.95);
+    CarSimulator<scalar> car(0.9, w, v, -0.8, 0.8);
     car.setInitialState(in_cell.toCarState());
-    car.setControl(v, w);
     ContinuousCell sim_dest(car.simulate(t,1.0), out_cell.is_forward(), map_resolution, theta_bins,
                             fixed_cells);
 

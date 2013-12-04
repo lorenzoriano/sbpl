@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 2.8)
 PROJECT( sbpl )
 
 #set(CMAKE_BUILD_TYPE Debug)
-#set(CMAKE_BUILD_TYPE Release)
-set(CMAKE_BUILD_TYPE RelWithDebInfo)
+set(CMAKE_BUILD_TYPE Release)
+#set(CMAKE_BUILD_TYPE RelWithDebInfo)
 
 include_directories(src/include)
 
@@ -26,6 +26,8 @@ add_library(sbpl SHARED
   src/utils/utils.cpp
   src/utils/2Dgridsearch.cpp	
   src/utils/continuouscell.cpp
+  src/include/sbpl/discrete_space_information/environment_car.h
+  src/include/sbpl/utils/car_simulator.h
     )
 target_link_libraries(sbpl yaml-cpp)
 
@@ -53,8 +55,8 @@ target_link_libraries(test_car sbpl)
 add_executable(test_primitives src/test/test_primitives.cpp)
 target_link_libraries(test_primitives sbpl)
 
-add_executable(test_simulator src/test/test_simulator.cpp)
-target_link_libraries(test_simulator sbpl)
+add_executable(test_sim src/test/test_simulator.cpp)
+target_link_libraries(test_sim sbpl)
 
 add_executable(generate_reachability_graph src/test/generate_reachability_graph.cpp)
 target_link_libraries(generate_reachability_graph sbpl)

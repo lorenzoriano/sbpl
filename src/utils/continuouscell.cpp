@@ -29,7 +29,7 @@ ContinuousCell::ContinuousCell(scalar x, scalar y, scalar th,
     id_ = -1;
 }
 
-ContinuousCell::ContinuousCell(const CarSimulator::state_type& p,
+ContinuousCell::ContinuousCell(const state_type& p,
                bool is_forward,
                scalar map_res, int theta_bins,
                bool fixed_cells) {
@@ -74,6 +74,10 @@ bool ContinuousCell::is_forward() const {
     return is_forward_;
 }
 
+void ContinuousCell::set_isForward(bool value) {
+    is_forward_ = value;
+}
+
 std::size_t ContinuousCell::hash() const {
 
     if (hash_calculated_)
@@ -107,14 +111,13 @@ std::string ContinuousCell::repr() const {
     return ss.str();
 }
 
-CarSimulator::state_type ContinuousCell::toCarState() const {
-    CarSimulator::state_type s;
+ContinuousCell::state_type ContinuousCell::toCarState() const {
+    state_type s;
     s[0] = x_;
     s[1] = y_;
     s[2] = th_;
     return s;
 }
-
 
 void ContinuousCell::addPredecessor(const motion_primitive& p, const boost::shared_ptr<ContinuousCell>& c) {
     predecessors_[c->id()] = std::make_pair(p, c);
@@ -156,6 +159,13 @@ void ContinuousCell::checkHashCollision(const ContinuousCell& other) {
 bool ContinuousCell::operator==(const ContinuousCell& other) const {
     return (( is_forward() == other.is_forward()) &&
             ( fabs(x()  -  other.x()) < map_res_) &&
+            ( fabs(y()  -  other.y()) < map_res_) &&
+            ( fabs(diff_angle(th(), other.th())) < (2*M_PI)/double(theta_bins_))
+           );
+}
+
+bool ContinuousCell::equalButForward(const ContinuousCell& other) const {
+    return (( fabs(x()  -  other.x()) < map_res_) &&
             ( fabs(y()  -  other.y()) < map_res_) &&
             ( fabs(diff_angle(th(), other.th())) < (2*M_PI)/double(theta_bins_))
            );

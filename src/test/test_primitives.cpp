@@ -7,21 +7,20 @@
 
 int main() {
 
-    EnvironmentCar env("/home/pezzotto/tmp/sbpl/car_primitives/world.yaml", true);
-    env.loadPrimitives("/home/pezzotto/tmp/sbpl/car_primitives/primitives.yaml");
+    EnvironmentCar env("/home/pezzotto/monpal/catkin_ws/src/sbpl_car_planner/sbpl/car_primitives/world.yaml", true);
+    env.loadPrimitives("/home/pezzotto/monpal/catkin_ws/src/sbpl_car_planner/sbpl/car_primitives/primitives.yaml");
 
-    env.setStart(0, 0, 0);
+    env.setStart(-1.02, -0.136, 6.02);
 
     std::vector<int> next_states, costs;
     env.GetSuccs(0, &next_states, &costs);
 
-    std::cout<<"Number of states: "<<env.numStates()<<"\n";
+    std::cout<<"Number of next states: "<<next_states.size()<<"\n";
+    for (std::vector<int>::iterator i = next_states.begin(); i != next_states.end(); i++) {
+        const ContinuousCellPtr& c = env.findCell(*i);
+        std::cout<<*(c.get())<<" "<<c->id()<<std::endl;
+    }
 
-    std::vector<int> all_states;
-    for (uint i=0; i<env.numStates(); i++)
-        all_states.push_back(i);
-
-    env.saveSolutionYAML(all_states, "/home/pezzotto/graph.yaml");
     std::cout<<"Done\n";
 
 }

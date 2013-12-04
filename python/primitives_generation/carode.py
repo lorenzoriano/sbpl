@@ -12,6 +12,12 @@ def diff_angle(a1, a2):
 def norm_angle(x):
     return angles.normalize(x, 0, 2*pi)
 
+class BadControl(Exception):
+    def __init__(self, message, control, endpos):
+        msg = "%s: control is %s, goal is %s" %(message, control, endpos)
+        super(BadControl, self).__init__(self, msg)
+
+
 class Car(object):
     """A simple car simulator with the capabilities of deriving motion primitives.
 
@@ -27,13 +33,11 @@ class Car(object):
     to the rear one is handled by the simulator.
     """
     def __init__(self, length, max_vel, min_vel, max_steer, min_steer,
-                 x=0, y=0, th=0, lin_vel = 0, steer_angle=0):
+                 x=0, y=0, th=0):
         self.length = length
         self.front_x = x
         self.front_y = y
         self.th = th
-        self.lin_vel = lin_vel
-        self.steer_angle = steer_angle
 
         self.max_vel = max_vel
         self.min_vel = min_vel
@@ -64,7 +68,7 @@ class Car(object):
             t = np.hstack((t, duration))
 
         integrator = ode(self.__integrate)
-        integrator.set_integrator('vode', with_jacobian=False, nsteps=1000)
+        integrator.set_integrator('vode', with_jacobian=False, nsteps=100)
         y = initial_state
         traj = [[self.front_x, self.front_y, self.th]]
         for step, prev_t in zip(t[1:], t[:-1]):
@@ -72,11 +76,11 @@ class Car(object):
             y = integrator.integrate(step)
             if not integrator.successful():
                 raise ValueError("Error during integration!")
-            y[2] = norm_angle(y[2])
+            angle = norm_angle(y[2])
             #convert back to front axle
-            front_axle = [y[0] + self.length * cos(self.th),
-                          y[1] + self.length * sin(self.th),
-                          y[2]
+            front_axle = [y[0] + self.length * cos(angle),
+                          y[1] + self.length * sin(angle),
+                          angle
                           ]
             traj.append(front_axle)
 
@@ -85,13 +89,13 @@ class Car(object):
     def set_control(self, vel, steer):
         norm_steer = angles.normalize(steer, -2*pi, 2*pi)
 
-        self.control_vel = self.lin_vel + vel
+        self.control_vel = vel
         if self.control_vel > self.max_vel:
             self.control_vel = self.max_vel
         if self.control_vel > self.max_vel:
             self.control_vel = self.min_vel
 
-        self.control_angle = self.steer_angle + norm_steer
+        self.control_angle = norm_steer
         if self.control_angle > self.max_steer:
             self.control_angle = self.max_steer
         if self.control_angle > self.max_steer:
@@ -129,8 +133,8 @@ class Car(object):
         """
 
         #bounds
-        vel_bounds = (self.min_vel + self.lin_vel, self.max_vel - self.lin_vel)
-        steer_bounds = (self.min_steer + self.steer_angle, self.max_steer + self.steer_angle)
+        vel_bounds = (self.min_vel, self.max_vel)
+        steer_bounds = (self.min_steer, self.max_steer)
 
         bounds = [vel_bounds, steer_bounds, time_bounds]
         end_pos = np.array(end_pos)
@@ -173,6 +177,104 @@ class Car(object):
         control, err, _, imode, _ = best_ret
         return (control, err, imode)
 
+    def find_primitive_slsqp_vt(self, end_pos, max_time,
+                             num_attempts = 10):
+        """Finds a primitive that leads the car to a specified position.
+
+        The user specifies end_pos = (x,y,th) and the
+        time_bounds = [min_time, max_time], i.e. how long should the control be
+        executed for. A primitive is a triple of (v,w,t), i.e. velocity, steering
+        angle and duration to bring the car from it's current position to the
+        desired end_pos. Internally it uses scipy fmin_slsqp to find a solution.
+
+        NOTE: time_bounds[0] should be strictly greater than 0
+
+        Several starting conditions can be specified with the num_attempts
+        parameter.
+
+        Returns:
+        a primitive (v,w,t) the brings the car from its current position to be
+        as close as possible to end_pos.
+        """
+
+        #checks to be compatible with the non-vt version
+        if type(max_time) is list:
+            max_time = max_time[-1]
+
+        #bounds
+        vt_bounds = (self.min_vel * max_time, self.max_vel * max_time)
+        steer_bounds = (self.min_steer, self.max_steer)
+
+        bounds = [vt_bounds, steer_bounds]
+        end_pos = np.array(end_pos)
+
+        def position_error(control):
+            vt, w = control
+            if vt > 0:
+                v = self.max_vel
+                t = vt / v
+            elif vt < 0:
+                v = self.min_vel
+                t = vt / v
+            else: #vt==0
+                #return np.sum(end_pos**2)
+                raise BadControl("Bad control", control, end_pos)
+
+            if (not np.isfinite(v)) or (not np.isfinite(t)):
+                #return np.sum(end_pos**2)
+                raise BadControl("Bad control", control, end_pos)
+
+            self.set_control(v, w)
+
+            traj = self.simulate(t)
+            final_pos = traj[-1,:]
+            err_x = (end_pos[0] - final_pos[0])
+            err_y = (end_pos[1] - final_pos[1])
+            err_th = diff_angle(end_pos[2], final_pos[2]) #special angles treatment
+
+            err = err_x**2 + err_y**2 + err_th**2
+            return err
+
+        def f_ieqcons(control):
+            return np.array([np.fabs(control[0]), 1])
+
+        #THIS IS WRONG, RESULTS IN num_attempts^2 iterations!
+        #inits = itertools.product(np.linspace(vt_bounds[0], vt_bounds[1], num_attempts),
+                                  #np.linspace(steer_bounds[0], steer_bounds[1], num_attempts)
+                                  #)
+
+        inits = zip(np.linspace(vt_bounds[0], vt_bounds[1], num_attempts),
+                                [0] * num_attempts
+                                )
+
+        best_ret = [0, np.inf, 0, 0]
+        for initial_control in inits:
+            try:
+                ret = optimize.fmin_slsqp(position_error,
+                                          initial_control,
+                                          #f_eqcons=position_error,
+                                          f_ieqcons=f_ieqcons,
+                                          bounds=bounds,
+                                          epsilon=0.0000001,
+                                          iter = 1000,
+                                          full_output=True,
+                                          iprint=0
+                                          )
+                if ret[1] < best_ret[1]:
+                    best_ret = ret
+            except BadControl, b:
+                print "Could not solve: ", b
+
+        control, err, _, imode, _ = best_ret
+        vt, w = control
+        if vt >= 0:
+            v = self.max_vel
+            t = vt / v
+        elif vt < 0:
+            v = self.min_vel
+            t = vt / v
+        return ((v, w, t), err, imode)
+
     def find_primitive_slsqp_euler(self, end_pos, time_bounds,
                                  num_attempts = 10):
         """Similar to find_primitive_slsqp, but the gradient is provided rather
@@ -183,9 +285,11 @@ class Car(object):
         See find_primitive_slsqp for the parameters and return values.
         """
 
+        raise DeprecationWarning("This procedure doesn't work, and needs fixing")
+
         #bounds
-        vel_bounds = (self.min_vel + self.lin_vel, self.max_vel - self.lin_vel)
-        steer_bounds = (self.min_steer + self.steer_angle, self.max_steer + self.steer_angle)
+        vel_bounds = (self.min_vel, self.max_vel)
+        steer_bounds = (self.min_steer, self.max_steer)
         #time_bounds = [0.1, 1.0]
 
         bounds = [vel_bounds, steer_bounds, time_bounds]
@@ -264,6 +368,8 @@ class Car(object):
         See find_primitive_slsqp for the parameters and return values.
         """
 
+        raise DeprecationWarning("This procedure doesn't work, and needs fixing")
+
         #bounds
         vt_bounds = (self.min_vel * max_time, self.max_vel * max_time)
         steer_bounds = (self.min_steer, self.max_steer)
@@ -338,14 +444,7 @@ class Car(object):
         return ((v,w,t), err, imode)
 
 if __name__ == "__main__":
-    max_vel = 1.0
-    min_vel = -0.3
-    max_steer = np.pi/4
-    min_steer = -np.pi/4
-    car = Car(0.95, max_vel, min_vel, max_steer, min_steer,
-                     lin_vel=0.0, steer_angle=0)
-    car.set_control(0.5, 0.21)
-
-    max_time =  1.0
-    traj2 = car.simulate( max_time)
-    print traj2
+    goal = [0.9, 0.5, 0.40536679]
+    car2 = Car(0.9, 0.3, 0, 0.8, -0.8)
+    car2.find_primitive_slsqp_vt(goal, 10, 5)
+    #print traj2

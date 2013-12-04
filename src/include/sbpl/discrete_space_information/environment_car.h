@@ -50,14 +50,18 @@ public:
                    scalar min_v,
                    scalar max_steer,
                    scalar min_steer,
-                   bool store_graph);
+                   bool store_graph,
+                   scalar flipping_cost=1.0);
 
     EnvironmentCar(const char *cfg_file, bool store_graph);
 
     void setGoal(scalar x, scalar y, scalar th);
     void setStart(scalar x, scalar y, scalar th);
 
-    bool isValidCell(const ContinuousCellPtr& c);
+    virtual bool isReachableCells(const ContinuousCellPtr& start,
+                                  const ContinuousCellPtr& dest,
+                                  double initial_steering,
+                                  double duration) const;
 
     friend std::ostream& operator<<(std::ostream& stream, const EnvironmentCar& cell);
 
@@ -221,6 +225,7 @@ protected:
     scalar  min_v_;
     scalar  max_steer_;
     scalar  min_steer_;
+    scalar flipping_cost_;
     bool fixed_cells_;
     bool store_graph_;
 
@@ -230,7 +235,7 @@ protected:
     ContinuousCellWeakPtr start_cell_;
 };
 
-std::ostream& operator<<(std::ostream& stream, const EnvironmentCar& env) {
+inline std::ostream& operator<<(std::ostream& stream, const EnvironmentCar& env) {
     stream<<"Car length: "<<env.car_length_<<" ";
     stream<<"Map resolution: "<<env.map_res_<<" ";
     stream<<"Theta bins: "<<env.theta_bins_<<" ";

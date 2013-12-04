@@ -117,6 +117,7 @@ public:
                               >
                     >
             prims_cells_t;
+    typedef CarSimulator<scalar>::state_type state_type;
 
     ContinuousCell(scalar x, scalar y, scalar th,
                    bool is_forward,
@@ -125,7 +126,7 @@ public:
                    bool fixed_cells
                    );
 
-    ContinuousCell(const CarSimulator::state_type& p,
+    ContinuousCell(const state_type& p,
                    bool is_forward,
                    scalar map_res, int theta_bins,
                    bool fixed_cells);
@@ -136,11 +137,12 @@ public:
     scalar y() const;
     scalar th() const;
     bool is_forward() const;
+    void set_isForward(bool value);
 
     std::size_t hash() const;
     std::string repr() const;
 
-    CarSimulator::state_type toCarState() const;
+    state_type toCarState() const;
 
     void addPredecessor(const motion_primitive& p, const boost::shared_ptr<ContinuousCell>& c);
 
@@ -153,6 +155,7 @@ public:
     void checkHashCollision(const ContinuousCell& other);
 
     bool operator==(const ContinuousCell& other) const;
+    bool equalButForward(const ContinuousCell& other) const;
 
     friend std::ostream& operator<<(std::ostream& stream, const ContinuousCell& matrix);
 
@@ -175,7 +178,7 @@ inline std::ostream& operator<<(std::ostream& stream, const ContinuousCell& cell
     std::stringstream ss;
     ss.unsetf(std::ios::floatfield);
     ss<<std::setprecision(3);
-    ss<<cell.x_<<" "<<cell.y_<<" "<<cell.th_<<" "<<-cell.is_forward_;
+    ss<<cell.x_<<" "<<cell.y_<<" "<<cell.th_<<" "<<cell.is_forward_;
     stream<<ss.str();
     return stream;
 }
